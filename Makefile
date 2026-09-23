@@ -1,8 +1,12 @@
-.PHONY: check registry-validate portal-build portal-dev render-firebase gallery gateway-test sites sites-check
+# Node 24 on macOS can segfault while an npm postinstall exits (@firebase/util; see the plan's surprises): the portal's
+# install is retried once. A second failure still fails the target.
+PORTAL_INSTALL = (npm ci --no-audit --no-fund || npm ci --no-audit --no-fund)
+
+.PHONY: check registry-validate portal-build portal-test portal-dev render-firebase gallery gateway-test sites sites-check realm-rehearsal
 
 ## check: every gate that exists (CI runs this)
 check: registry-validate sites-check
-	@if [ -f apps/portal/package.json ]; then $(MAKE) portal-build; fi
+	@if [ -f apps/portal/package.json ]; then $(MAKE) portal-build && cd apps/portal && npm test; fi
 	@if [ -f apps/gateway/package.json ]; then $(MAKE) gateway-test; fi
 
 ## registry-validate: registry/apps/*.json against registry/schema/app.schema.json (no dependencies)
@@ -11,12 +15,20 @@ registry-validate:
 
 ## portal-build: apps/portal → apps/portal/build (+ registry.json, checked to carry no private repo blocks)
 portal-build:
-	cd apps/portal && npm ci --no-audit --no-fund && npm run build
+	cd apps/portal && $(PORTAL_INSTALL) && npm run build
 	node scripts/validate-registry.mjs --published apps/portal/build/registry.json
 
-## portal-dev: local dev server for the portal
+## portal-test: unit tests of the portal's world logic (realm layout, access, board, collisions)
+portal-test:
+	cd apps/portal && $(PORTAL_INSTALL) && npm test
+
+## portal-dev: local dev server for the portal (the realm is open: every gate and room, no sign-in)
 portal-dev:
 	cd apps/portal && npm run dev
+
+## realm-rehearsal: the guarded realm locally — Auth/Firestore emulators, the gateway door on :8787, the portal on :5174
+realm-rehearsal:
+	./scripts/realm-rehearsal.sh
 
 ## render-firebase: regenerate the rewrites block of firebase.json from the registry (idempotent)
 render-firebase:

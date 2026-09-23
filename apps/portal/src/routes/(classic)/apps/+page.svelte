@@ -8,13 +8,16 @@
 </script>
 
 <svelte:head>
-	<title>{site.title}</title>
+	<title>Apps · {site.title}</title>
 	<meta name="description" content="Personal apps on {data.domain}. Pick a tile to open it." />
 </svelte:head>
 
 <section class="hero">
 	<h1>Everything I build, one door.</h1>
-	<p class="lede">Personal apps on {data.domain}. Pick a tile to open it.</p>
+	<p class="lede">
+		Personal apps on {data.domain}. Pick a tile to open it, or <a href="/">walk the realm of Eisenhold</a> and step through
+		their gates.
+	</p>
 	<GatewayStatus healthUrl={data.healthUrl} liveCount={data.liveCount} />
 </section>
 
