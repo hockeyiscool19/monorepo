@@ -31,10 +31,37 @@ App repos report deploys with a `repository_dispatch`, CI patches the manifest a
 | `scripts/` | validate-registry, render-firebase, bootstrap-ci-auth, install-host |
 | `docs/` | plan, runbooks, style mockup gallery |
 
+## Use the standards in an app repo
+
+Two ways; both install the same skills (design, architecture, deployment, and one `site-<id>` skill per app).
+
+**Claude Code plugins.** The repo is a plugin marketplace named `eisensoftware`:
+
+```bash
+claude plugin marketplace add hockeyiscool19/monorepo
+claude plugin install eisen-design@eisensoftware
+claude plugin install eisen-architecture@eisensoftware
+claude plugin install eisen-platform@eisensoftware
+```
+
+Update later with `claude plugin marketplace update eisensoftware`, then `claude plugin update <plugin>@eisensoftware`.
+
+**Submodule (Claude Code and Cursor).** Mirrors eval-driven-dev:
+
+```bash
+git submodule add git@github.com:hockeyiscool19/monorepo.git platform
+./platform/scripts/install-host.sh            # --dry-run to preview, --uninstall to remove
+```
+
+It symlinks every skill into `.claude/skills/` and `.cursor/skills/` and adds a pointer block to the host's `AGENTS.md`.
+Details: [docs/runbooks/adopt-standards.md](docs/runbooks/adopt-standards.md).
+
 ## Quickstart
 
 ```bash
-make check            # validate the registry and build/test whatever packages exist
+make check            # validate the registry, check generated skills, build/test whatever packages exist
 make portal-dev       # run the portal locally
 make render-firebase  # regenerate firebase.json rewrites after editing the registry
+make sites            # regenerate the per-app site-<id> skills after editing the registry
+make gallery          # serve the repo; style gallery at http://127.0.0.1:4178/docs/mockups/
 ```

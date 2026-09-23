@@ -1,0 +1,31 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "eisensoftware",
+  "owner": {
+    "name": "Jordan Eisenman"
+  },
+  "metadata": {
+    "description": "House standards for eisensoftware.com applications: design tokens and UI styles, hexagonal architecture, and deployment, image and site conventions with one generated skill per registered site.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "eisen-design",
+      "source": "./plugins/eisen-design",
+      "description": "Design foundation: the design-token contract (neutral tokens.css + contrast checker), information architecture, WCAG 2.2 AA accessibility with an axe audit script, and five swappable ui-style-* skills with mockups.",
+      "version": "0.1.0"
+    },
+    {
+      "name": "eisen-architecture",
+      "source": "./plugins/eisen-architecture",
+      "description": "Architecture standards: hexagonal layout with runnable Python and TypeScript checkers, ports-and-adapters rules with templates, and agent-friendly codebase conventions (AGENTS.md, gates, plans, worker packets).",
+      "version": "0.1.0"
+    },
+    {
+      "name": "eisen-platform",
+      "source": "./plugins/eisen-platform",
+      "description": "Deployment standards: semver releases with receipts (deploy-versioning), immutable image tags on Artifact Registry (image-tagging), how an app joins eisensoftware.com (site-plugin), and one generated site-<id> skill per registered app.",
+      "version": "0.1.0"
+    }
+  ]
+}

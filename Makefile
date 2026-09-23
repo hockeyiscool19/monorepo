@@ -1,7 +1,7 @@
-.PHONY: check registry-validate portal-build portal-dev render-firebase gallery gateway-test
+.PHONY: check registry-validate portal-build portal-dev render-firebase gallery gateway-test sites sites-check
 
 ## check: every gate that exists (CI runs this)
-check: registry-validate
+check: registry-validate sites-check
 	@if [ -f apps/portal/package.json ]; then $(MAKE) portal-build; fi
 	@if [ -f apps/gateway/package.json ]; then $(MAKE) gateway-test; fi
 
@@ -24,6 +24,14 @@ render-firebase:
 ## gallery: serve the repo root; the style gallery is http://127.0.0.1:4178/docs/mockups/
 gallery:
 	python3 -m http.server 4178 --bind 127.0.0.1
+
+## sites: regenerate plugins/eisen-platform/skills/sites/site-<id>/SKILL.md from the registry (idempotent)
+sites:
+	node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs
+
+## sites-check: fail when the generated site skills are stale (part of check)
+sites-check:
+	node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs --check
 
 ## gateway-test: unit tests for apps/gateway
 gateway-test:

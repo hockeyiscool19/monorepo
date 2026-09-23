@@ -1,0 +1,40 @@
+# <service> — Cloud Run image for a Python service (FastAPI + uvicorn; image-tagging rule 5). Copy next to
+# requirements.txt, replace <…>. Build:
+#   docker build --build-arg IMAGE_REVISION="$(git rev-parse HEAD)" --build-arg IMAGE_VERSION=1.2.3 \
+#     --build-arg IMAGE_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+#     -t us-central1-docker.pkg.dev/<project>/<repo>/<service>:sha-<12> .
+# Stage "build" resolves and compiles dependencies (wheels, build tools); stage "runtime" copies only the installed
+# packages and the source, and runs as the unprivileged `app` user. Add a `frontend` stage (node:20-alpine,
+# `npm ci && npm run build`, then COPY --from=frontend) when the service also serves a built SPA.
+
+FROM python:3.12-slim AS build
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+FROM python:3.12-slim AS runtime
+ARG IMAGE_SOURCE=https://github.com/<owner>/<repo>
+ARG IMAGE_REVISION=unknown
+ARG IMAGE_VERSION=dev
+ARG IMAGE_CREATED=unknown
+LABEL org.opencontainers.image.title="<service>" \
+      org.opencontainers.image.source=$IMAGE_SOURCE \
+      org.opencontainers.image.revision=$IMAGE_REVISION \
+      org.opencontainers.image.version=$IMAGE_VERSION \
+      org.opencontainers.image.created=$IMAGE_CREATED
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8080 \
+    BASE_PATH=/<path> \
+    APP_VERSION=$IMAGE_VERSION \
+    APP_REVISION=$IMAGE_REVISION
+RUN useradd --system --uid 10001 --create-home --shell /usr/sbin/nologin app
+WORKDIR /app
+COPY --from=build /install /usr/local
+COPY --chown=app:app src/ ./src/
+USER app
+EXPOSE 8080
+# Cloud Run sets PORT=8080 by default and the deploy passes --port 8080, so the exec form can name it directly.
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
+
+# .dockerignore next to this file: .git, .venv, __pycache__, *.pyc, tests, .env*, *.pem, node_modules, dist

@@ -1,0 +1,43 @@
+# <service> — Cloud Run image for a Node service (image-tagging rule 5). Copy next to package.json, replace <…>.
+# Build from the directory that holds package.json (a monorepo app builds from the repository root with -f):
+#   docker build --build-arg IMAGE_REVISION="$(git rev-parse HEAD)" --build-arg IMAGE_VERSION=1.2.3 \
+#     --build-arg IMAGE_CREATED="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+#     -t us-central1-docker.pkg.dev/<project>/<repo>/<service>:sha-<12> .
+# templates/build-push.sh computes those arguments and the tags. Stage "build" compiles with dev dependencies;
+# stage "runtime" ships dist/ and production dependencies only, as the unprivileged `node` user.
+
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY . .
+RUN npm run build
+
+FROM node:20-alpine AS runtime
+ARG IMAGE_SOURCE=https://github.com/<owner>/<repo>
+ARG IMAGE_REVISION=unknown
+ARG IMAGE_VERSION=dev
+ARG IMAGE_CREATED=unknown
+LABEL org.opencontainers.image.title="<service>" \
+      org.opencontainers.image.source=$IMAGE_SOURCE \
+      org.opencontainers.image.revision=$IMAGE_REVISION \
+      org.opencontainers.image.version=$IMAGE_VERSION \
+      org.opencontainers.image.created=$IMAGE_CREATED
+ENV NODE_ENV=production \
+    PORT=8080 \
+    APP_VERSION=$IMAGE_VERSION \
+    APP_REVISION=$IMAGE_REVISION
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --no-audit --no-fund && npm cache clean --force
+COPY --from=build /app/dist ./dist
+USER node
+EXPOSE 8080
+CMD ["node", "dist/main.js"]
+
+# Next.js (next.config: output "standalone", basePath "/<path>") — replace the runtime stage's install and copy with:
+#   COPY --from=build --chown=node:node /app/.next/standalone ./
+#   COPY --from=build --chown=node:node /app/.next/static ./.next/static
+#   COPY --from=build --chown=node:node /app/public ./public
+#   CMD ["node", "server.js"]          # no second npm ci: the standalone output bundles its node_modules
+# .dockerignore next to this file: node_modules, .git, dist, .next, build, .env*, *.pem, coverage

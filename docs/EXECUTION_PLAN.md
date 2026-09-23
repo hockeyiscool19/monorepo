@@ -75,7 +75,7 @@ scripts/                       validate-registry.mjs · render-firebase.mjs · b
 .github/workflows/             ci.yml · deploy.yml · register-deployment.yml · register-app.yml (reusable, workflow_call)
 plugins/eisen-design/          skills: design-tokens · information-architecture · accessibility-ada · ui-style-* (×5)
 plugins/eisen-architecture/    skills: hexagonal-architecture · ports-and-adapters · agent-friendly-codebase
-plugins/eisen-platform/        skills: deploy-versioning · image-tagging · site-plugin (+ generated sites/<app>)
+plugins/eisen-platform/        skills: deploy-versioning · image-tagging · site-plugin (+ generated sites/site-<app>)
 .claude-plugin/marketplace.json  plugin marketplace served from this repo
 ```
 
@@ -143,7 +143,7 @@ find-code/land-change routines, plans with the four living sections, worker pack
 `deploy-versioning` (semver + `v*` tags, release ≠ deploy ≠ publish with receipts, environments, promote by tag),
 `image-tagging` (`:sha-<12>` + `:v<semver>` + branch tag, never deploy `:latest`, OCI labels, Artifact Registry path
 convention, retention), `site-plugin` (how an app joins the platform: manifest, base path, health endpoint, register step,
-CORS; plus generated per-site skills `sites/<app>/SKILL.md` from the registry so Claude knows each site's URLs, API and
+CORS; plus generated per-site skills `sites/site-<app>/SKILL.md` from the registry so Claude knows each site's URLs, API and
 smoke tests). `.claude-plugin/marketplace.json` lists the three plugins. `scripts/install-host.sh` symlinks skills into
 a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer (mirrors eval-driven-dev).
 **Verify** installing into a scratch repo works both ways; `claude plugin` lists the skills.
@@ -179,7 +179,7 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
 - [ ] Phase 4 — CI/CD sync
 - [x] 2026-09-23 Phase 5 — Design skill base. design-tokens (contract 1.1: tokens + `components.md`), information-architecture, accessibility-ada (+ axe audit script), gallery (`make gallery` → `/docs/mockups/`), and five styles (expressive, editorial, dense, brutalist, organic). Evidence: `check-contrast.mjs` on all six token files → `RESULT: PASS` ×6 (62 light / 26 dark names each); every `mockup.html` byte-identical to `mockups/reference.html`; no color literals in any `components.css`; each style checked in a browser at 360px (no page overflow) and 1280px, light and dark. Next: Jordan picks the portal style (`PORTAL_STYLE=ui-style-<name>`).
 - [ ] Phase 6 — Architecture skill base
-- [ ] Phase 7 — Platform skills + distribution
+- [x] 2026-09-23 Phase 7 — Platform skills + distribution. `plugins/eisen-platform` (deploy-versioning, image-tagging, site-plugin + generated `sites/site-{healthconnect,topology,vale}`), `.claude-plugin/marketplace.json`, `scripts/install-host.sh`, `docs/runbooks/adopt-standards.md`. Evidence: `claude plugin validate --strict` → `Validation passed` (marketplace and plugin); local `marketplace add` + `install eisen-platform@eisensoftware` listed 6 skills, then uninstalled; host test under `/bin/bash` 3.2 → 33 links, AGENTS.md block, idempotent second run, clean `--uninstall`; `make sites-check` → up to date (now part of `make check`). Coordinator renamed generated dirs to `site-<id>` so marketplace and submodule expose the same skill name.
 
 ## Surprises & discoveries
 
