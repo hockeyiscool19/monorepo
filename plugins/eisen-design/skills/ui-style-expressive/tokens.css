@@ -1,0 +1,182 @@
+/* ui-style-expressive — design-token contract v1.1.
+   Friendly, colourful, springy. One seed (#5444d8, OKLCH hue 280) drives the accent, the tinted
+   neutrals and the tonal containers; Figtree carries display and body; shapes are round, motion
+   overshoots. Same token names as design-tokens/tokens.css — components read only those names. */
+
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;700;800&display=swap");
+
+:root {
+  color-scheme: light dark;
+
+  /* color: surfaces — neutrals tinted with the seed hue (tonal levels: bg < elevated < surface) */
+  --color-bg: #f1f3fe;
+  --color-bg-elevated: #fbfbfe;
+  --color-surface: #ffffff;
+  --color-surface-hover: #eaecfa;
+  --color-border: #d6d8e7;
+  --color-border-strong: #6e7083;
+
+  /* color: text */
+  --color-text: #181928;
+  --color-text-muted: #545669;
+  --color-text-inverse: #fbfbfe;
+
+  /* color: accent — primary tone 50, container tone 92 with tone 42 text on it */
+  --color-accent: #5444d8;
+  --color-accent-hover: #4832c7;
+  --color-on-accent: #ffffff;
+  --color-accent-soft: #dfe2ff;
+  --color-on-accent-soft: #4227bc;
+
+  /* color: semantic — tone 50 so badges read as one family; focus is the tertiary (seed hue + 60°,
+     rose) so a ring is visible next to accent-filled elements too */
+  --color-success: #007835;
+  --color-warning: #8a5b00;
+  --color-danger: #be222a;
+  --color-info: #006e8c;
+  --color-focus: #9b357f;
+
+  /* color: tints — tone 94 fills for badges and alerts; --color-text sits on them at ≥ 13:1 */
+  --color-success-soft: #cbf9d3;
+  --color-warning-soft: #ffe8c2;
+  --color-danger-soft: #ffdfdc;
+  --color-info-soft: #d1f1ff;
+
+  /* type — one rounded humanist family for everything; mono only for code values */
+  --font-sans: "Figtree", ui-rounded, "SF Pro Rounded", "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-display: var(--font-sans);
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.8125rem;
+  --leading-tight: 1.15;
+  --leading-normal: 1.5;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+
+  /* space: 4-pt grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* shape — rounder than neutral: chips 8, inputs 12, cards 20, sheets and the hero 28, buttons pill */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* elevation — seed-tinted, used only for lifted/floating layers; tone does the resting depth */
+  --shadow-sm: 0 1px 2px rgb(38 28 120 / 0.08), 0 1px 1px rgb(38 28 120 / 0.04);
+  --shadow-md: 0 6px 16px -4px rgb(38 28 120 / 0.18), 0 2px 4px rgb(38 28 120 / 0.06);
+  --shadow-lg: 0 16px 40px -8px rgb(38 28 120 / 0.28), 0 4px 10px rgb(38 28 120 / 0.08);
+
+  /* motion — emphasized curve overshoots (springy press/hover); standard curve for colour */
+  --duration-fast: 120ms;
+  --duration-base: 220ms;
+  --duration-slow: 420ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.34, 1.45, 0.64, 1);
+
+  /* layout + controls — touch-friendly 48px buttons, inputs and rows at every width */
+  --content-max: 1160px;
+  --gutter: 20px;
+  --control-height: 48px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #101119;
+    --color-bg-elevated: #191a24;
+    --color-surface: #1e1f2b;
+    --color-surface-hover: #292a37;
+    --color-border: #3a3c4a;
+    --color-border-strong: #828598;
+    --color-text: #e6e7ef;
+    --color-text-muted: #aeb0be;
+    --color-text-inverse: #14151f;
+    --color-accent: #bcc2ff;
+    --color-accent-hover: #cbd0fe;
+    --color-on-accent: #2a008b;
+    --color-accent-soft: #3d26ae;
+    --color-on-accent-soft: #dfe2ff;
+    --color-success: #75df8f;
+    --color-warning: #f9b64f;
+    --color-danger: #ffa098;
+    --color-info: #60d4fe;
+    --color-focus: #ffa0e0;
+    --color-success-soft: #0d371a;
+    --color-warning-soft: #3d2a02;
+    --color-danger-soft: #4b1d1b;
+    --color-info-soft: #003344;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 1px rgb(0 0 0 / 0.3);
+    --shadow-md: 0 6px 16px -4px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.35);
+    --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.65), 0 4px 10px rgb(0 0 0 / 0.4);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #101119;
+  --color-bg-elevated: #191a24;
+  --color-surface: #1e1f2b;
+  --color-surface-hover: #292a37;
+  --color-border: #3a3c4a;
+  --color-border-strong: #828598;
+  --color-text: #e6e7ef;
+  --color-text-muted: #aeb0be;
+  --color-text-inverse: #14151f;
+  --color-accent: #bcc2ff;
+  --color-accent-hover: #cbd0fe;
+  --color-on-accent: #2a008b;
+  --color-accent-soft: #3d26ae;
+  --color-on-accent-soft: #dfe2ff;
+  --color-success: #75df8f;
+  --color-warning: #f9b64f;
+  --color-danger: #ffa098;
+  --color-info: #60d4fe;
+  --color-focus: #ffa0e0;
+  --color-success-soft: #0d371a;
+  --color-warning-soft: #3d2a02;
+  --color-danger-soft: #4b1d1b;
+  --color-info-soft: #003344;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 1px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 6px 16px -4px rgb(0 0 0 / 0.55), 0 2px 4px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.65), 0 4px 10px rgb(0 0 0 / 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
