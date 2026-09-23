@@ -1,0 +1,183 @@
+/* ui-style-brutalist — tokens.css
+   Implements design-token contract v1.1 (plugins/eisen-design/skills/design-tokens/SKILL.md).
+   Paper and ink, one acid accent, hard offset shadows, no radius, instant motion.
+   Light values live in :root; dark values live twice so the OS preference and the data-theme switch both work.
+   Fonts: Archivo (grotesque, display + body) and IBM Plex Mono (labels, meta, controls), with system fallbacks. */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;800&family=IBM+Plex+Mono:wght@400;500;700&display=swap");
+
+:root {
+  color-scheme: light;
+
+  /* color: surfaces — bone paper, white cards, ink rules. --color-border is the thin secondary rule;
+     --color-border-strong is the ink every interactive edge is drawn in. */
+  --color-bg: #f2efe6;
+  --color-bg-elevated: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-hover: #e9e5d9;
+  --color-border: #6b675e;
+  --color-border-strong: #000000;
+
+  /* color: text — true black; muted stays above 6:1 on both paper and card */
+  --color-text: #000000;
+  --color-text-muted: #57534b;
+  --color-text-inverse: #ffffff;
+
+  /* color: accent — acid yellow, always with black on top. The accent has no contrast against paper
+     on its own, so every accent block carries a --color-border-strong edge. */
+  --color-accent: #e6ff00;
+  --color-accent-hover: #cfe600;
+  --color-on-accent: #000000;
+  --color-accent-soft: #f6f9c2;
+  --color-on-accent-soft: #000000;
+
+  /* color: semantic — dark enough to be used as text (≥ 4.5:1 on bg and surface), as rules, and as the dot.
+     Tints are near-paper; a badge or alert on a tint carries ink text and the semantic colour as its rule. */
+  --color-success: #0a6b2a;
+  --color-warning: #8a5300;
+  --color-danger: #b3102b;
+  --color-info: #0033cc;
+  --color-success-soft: #dcf2df;
+  --color-warning-soft: #fbeccc;
+  --color-danger-soft: #fbe1de;
+  --color-info-soft: #dbe6fb;
+  --color-focus: #000000;
+
+  /* type — one grotesque for display and prose, one mono for every label */
+  --font-sans: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: clamp(2.25rem, 1.5rem + 3.5vw, 4.5rem);
+  --leading-tight: 1.05;
+  --leading-normal: 1.5;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 800;
+
+  /* space: 4-pt grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* shape: none. --radius-full exists for the status dot only. Controls are touch height everywhere. */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-full: 9999px;
+  --control-height: 44px;
+
+  /* elevation: solid offsets in ink, no blur. A press translates by the same offset (4 / 6 / 10 px). */
+  --shadow-sm: 4px 4px 0 var(--color-border-strong);
+  --shadow-md: 6px 6px 0 var(--color-border-strong);
+  --shadow-lg: 10px 10px 0 var(--color-border-strong);
+
+  /* motion: instant or near it; nothing eases */
+  --duration-fast: 0ms;
+  --duration-base: 60ms;
+  --duration-slow: 100ms;
+  --ease-standard: linear;
+  --ease-emphasized: linear;
+
+  /* layout */
+  --content-max: 1200px;
+  --gutter: clamp(16px, 4vw, 32px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #000000;
+    --color-bg-elevated: #141414;
+    --color-surface: #111111;
+    --color-surface-hover: #222222;
+    --color-border: #8f8a7e;
+    --color-border-strong: #f2efe6;
+    --color-text: #f2efe6;
+    --color-text-muted: #b8b3a7;
+    --color-text-inverse: #000000;
+    --color-accent: #e6ff00;
+    --color-accent-hover: #f4ff66;
+    --color-on-accent: #000000;
+    --color-accent-soft: #2a2e00;
+    --color-on-accent-soft: #e6ff00;
+    --color-success: #3ddc84;
+    --color-warning: #ffb020;
+    --color-danger: #ff5c4d;
+    --color-info: #5da2ff;
+    --color-success-soft: #0c2414;
+    --color-warning-soft: #2b1e00;
+    --color-danger-soft: #2e0e0c;
+    --color-info-soft: #0b1a33;
+    --color-focus: #f2efe6;
+    --radius-xl: 0px;
+    --control-height: 44px;
+    --shadow-sm: 4px 4px 0 var(--color-border-strong);
+    --shadow-md: 6px 6px 0 var(--color-border-strong);
+    --shadow-lg: 10px 10px 0 var(--color-border-strong);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #000000;
+  --color-bg-elevated: #141414;
+  --color-surface: #111111;
+  --color-surface-hover: #222222;
+  --color-border: #8f8a7e;
+  --color-border-strong: #f2efe6;
+  --color-text: #f2efe6;
+  --color-text-muted: #b8b3a7;
+  --color-text-inverse: #000000;
+  --color-accent: #e6ff00;
+  --color-accent-hover: #f4ff66;
+  --color-on-accent: #000000;
+  --color-accent-soft: #2a2e00;
+  --color-on-accent-soft: #e6ff00;
+  --color-success: #3ddc84;
+  --color-warning: #ffb020;
+  --color-danger: #ff5c4d;
+  --color-info: #5da2ff;
+  --color-success-soft: #0c2414;
+  --color-warning-soft: #2b1e00;
+  --color-danger-soft: #2e0e0c;
+  --color-info-soft: #0b1a33;
+  --color-focus: #f2efe6;
+  --radius-xl: 0px;
+  --control-height: 44px;
+  --shadow-sm: 4px 4px 0 var(--color-border-strong);
+  --shadow-md: 6px 6px 0 var(--color-border-strong);
+  --shadow-lg: 10px 10px 0 var(--color-border-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
+
+/* Focus is a second ink rule, set off from the element's own edge by a paper gap. */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
