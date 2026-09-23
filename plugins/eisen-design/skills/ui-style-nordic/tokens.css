@@ -1,0 +1,195 @@
+/* ui-style-nordic — tokens.css
+   Implements design-token contract 1.1 (plugins/eisen-design/skills/design-tokens/SKILL.md).
+   An old northern hold: carved stone, iron, parchment, rune-gold, frost.
+   Light is the journal and the map: parchment ground, iron-gall ink, burnished rune-gold, oxblood danger.
+   Dark is the night HUD: deep blue-charcoal ground, bone-white text, rune-gold accent, frost focus and info.
+   Fonts: Cinzel (engraved Roman capitals: headings, wordmark, names) and Jost (geometric, the HUD voice),
+   with Trajan/serif and Futura/system-ui fallbacks; mono is the system stack.
+   Private tokens are prefixed --x- and may only be read by this style's own components.css. */
+
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Jost:wght@400;500;600&display=swap");
+
+:root {
+  color-scheme: light;
+
+  /* color: surfaces — parchment ground, vellum panels, sepia hairlines, iron edges */
+  --color-bg: #ebe1c9;
+  --color-bg-elevated: #f2eada;
+  --color-surface: #f6f0e1;
+  --color-surface-hover: #ece3cd;
+  --color-border: #d2c4a3;
+  --color-border-strong: #857559;
+
+  /* color: text — iron-gall ink; faded ink stays above 6:1 */
+  --color-text: #221a13;
+  --color-text-muted: #5a4d3d;
+  --color-text-inverse: #f6f0e1;
+
+  /* color: accent — burnished rune-gold, vellum on top; deep enough to be link text on parchment (5.1:1) */
+  --color-accent: #7a5616;
+  --color-accent-hover: #644510;
+  --color-on-accent: #f8f2e3;
+  --color-accent-soft: #ecdcb2;
+  --color-on-accent-soft: #553c0b;
+
+  /* color: semantic — pine, ember, oxblood, glacier; each ≥ 4.9:1 on parchment, so usable as text */
+  --color-success: #2f5d3b;
+  --color-warning: #9a4716;
+  --color-danger: #9e2b23;
+  --color-info: #265d7d;
+  --color-focus: #1f5f8b;
+
+  /* color: tints — washes on parchment for badges and alerts; ink reads on every one at ≥ 12:1 */
+  --color-success-soft: #dce4cc;
+  --color-warning-soft: #f0dac0;
+  --color-danger-soft: #efd4c9;
+  --color-info-soft: #d5e0e0;
+
+  /* type — engraved capitals for names, a geometric sans for everything read or operated */
+  --font-sans: "Jost", "Futura PT", Futura, "Century Gothic", "Avenir Next", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-display: "Cinzel", "Trajan Pro 3", "Trajan Pro", Trajan, "Palatino Linotype", Palatino, Georgia, serif;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: clamp(1.75rem, 1.4rem + 1.2vw, 2.25rem);
+  --text-3xl: clamp(2rem, 1.3rem + 3vw, 3.25rem);
+  --leading-tight: 1.15;
+  --leading-normal: 1.6;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 600;
+
+  /* space: 4-pt grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* shape — carved, not pillowy: chamfer-small corners, 6px at most */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-full: 9999px;
+
+  /* controls — one touch-safe height for buttons, inputs, nav items and the toggle */
+  --control-height: 44px;
+
+  /* elevation — stone sits, it does not float: tight shadows tinted with the ink */
+  --shadow-sm: 0 1px 0 rgb(34 26 19 / 0.06), 0 1px 3px rgb(34 26 19 / 0.08);
+  --shadow-md: 0 2px 4px rgb(34 26 19 / 0.08), 0 6px 16px rgb(34 26 19 / 0.10);
+  --shadow-lg: 0 4px 8px rgb(34 26 19 / 0.10), 0 16px 40px rgb(34 26 19 / 0.16);
+
+  /* motion — measured: plain ease-in-out and a long decelerate; no curve overshoots */
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+
+  /* layout */
+  --content-max: 1120px;
+  --gutter: 20px;
+
+  /* private: the carved frame and the double rule (the signature), tracking, the hero wash, the rune glow */
+  --x-inset: 3px;
+  --x-rule: 3px;
+  --x-caps-tracking: 0.08em;
+  --x-display-tracking: 0.03em;
+  --x-hero-bg: radial-gradient(120% 100% at 50% 0%, #faf6ec 0%, #f4ecdb 55%, #ece2cb 100%);
+  --x-rune-glow: 0 1px 2px rgb(34 26 19 / 0.10), 0 6px 18px rgb(122 86 22 / 0.22);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #0f1319;
+    --color-bg-elevated: #151a22;
+    --color-surface: #171d26;
+    --color-surface-hover: #1f2733;
+    --color-border: #2a3340;
+    --color-border-strong: #687385;
+    --color-text: #ece5d4;
+    --color-text-muted: #a4abb6;
+    --color-text-inverse: #0f1319;
+    --color-accent: #d9b45e;
+    --color-accent-hover: #e7c678;
+    --color-on-accent: #17130a;
+    --color-accent-soft: #3a3020;
+    --color-on-accent-soft: #f0dca6;
+    --color-success: #8dc99a;
+    --color-warning: #ef8f4f;
+    --color-danger: #e8655c;
+    --color-info: #8ec6e8;
+    --color-focus: #a3d8f7;
+    --color-success-soft: #1c3325;
+    --color-warning-soft: #3d2a1a;
+    --color-danger-soft: #3e2023;
+    --color-info-soft: #193043;
+    --shadow-sm: 0 1px 0 rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.40);
+    --shadow-md: 0 2px 4px rgb(0 0 0 / 0.40), 0 8px 18px rgb(0 0 0 / 0.45);
+    --shadow-lg: 0 4px 10px rgb(0 0 0 / 0.45), 0 18px 44px rgb(0 0 0 / 0.55);
+    --x-hero-bg: radial-gradient(120% 100% at 50% 0%, #1f2a37 0%, #19212b 55%, #141a22 100%);
+    --x-rune-glow: 0 0 0 1px rgb(217 180 94 / 0.30), 0 0 22px rgb(217 180 94 / 0.16);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0f1319;
+  --color-bg-elevated: #151a22;
+  --color-surface: #171d26;
+  --color-surface-hover: #1f2733;
+  --color-border: #2a3340;
+  --color-border-strong: #687385;
+  --color-text: #ece5d4;
+  --color-text-muted: #a4abb6;
+  --color-text-inverse: #0f1319;
+  --color-accent: #d9b45e;
+  --color-accent-hover: #e7c678;
+  --color-on-accent: #17130a;
+  --color-accent-soft: #3a3020;
+  --color-on-accent-soft: #f0dca6;
+  --color-success: #8dc99a;
+  --color-warning: #ef8f4f;
+  --color-danger: #e8655c;
+  --color-info: #8ec6e8;
+  --color-focus: #a3d8f7;
+  --color-success-soft: #1c3325;
+  --color-warning-soft: #3d2a1a;
+  --color-danger-soft: #3e2023;
+  --color-info-soft: #193043;
+  --shadow-sm: 0 1px 0 rgb(0 0 0 / 0.35), 0 1px 3px rgb(0 0 0 / 0.40);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.40), 0 8px 18px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 4px 10px rgb(0 0 0 / 0.45), 0 18px 44px rgb(0 0 0 / 0.55);
+  --x-hero-bg: radial-gradient(120% 100% at 50% 0%, #1f2a37 0%, #19212b 55%, #141a22 100%);
+  --x-rune-glow: 0 0 0 1px rgb(217 180 94 / 0.30), 0 0 22px rgb(217 180 94 / 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
