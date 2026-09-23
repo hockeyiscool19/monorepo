@@ -1,6 +1,6 @@
 # Agent contract — eisensoftware platform monorepo
 
-This repository is the controller for `eisensoftware.com`: a tiles portal, an API gateway, the app
+This repository is the controller for `eisensoftware.com`: a portal (the 3D realm Eisenhold, plus a list view), an API gateway, the app
 registry that drives both, the CI/CD sync from app repos, and the skill plugins that other repos install.
 The tool-neutral instructions live here; `CLAUDE.md` only imports this file.
 
@@ -16,7 +16,7 @@ The tool-neutral instructions live here; `CLAUDE.md` only imports this file.
 | Path | What it is | Owner |
 |---|---|---|
 | `registry/` | Source of truth: `registry.json` (one object: `platform` + `apps[]`), `schema/registry.schema.json` | coordinator (CI patches each app's `deployment`) |
-| `apps/portal/` | SvelteKit static tiles app; reads the registry at build time | portal agent |
+| `apps/portal/` | SvelteKit static site: the 3D realm Eisenhold at `/` (three.js), the tiles at `/apps`; reads the registry at build time | portal agent |
 | `apps/gateway/` | Cloud Run API gateway (Hono + TypeScript, hexagonal layout) | gateway agent |
 | `firebase.json`, `.firebaserc` | Hosting site + rewrites; rewrites are rendered from the registry | coordinator |
 | `scripts/` | Repo-level tooling (validate registry, render firebase config, bootstrap CI auth, install-host) | coordinator |
@@ -44,6 +44,8 @@ The tool-neutral instructions live here; `CLAUDE.md` only imports this file.
 ```
 make check            # registry validation + every package check that exists
 make portal-build     # apps/portal → apps/portal/build (+ registry.json)
+make portal-test      # the realm's domain logic (vitest)
+make realm-rehearsal  # the guarded realm locally: emulators + the gateway door + the portal (not a CI gate)
 make render-firebase  # regenerate firebase.json rewrites from the registry (idempotent)
 ```
 

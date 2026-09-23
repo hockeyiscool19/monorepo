@@ -73,7 +73,7 @@ apps/gateway/                  Cloud Run API gateway (Node 20 + Hono, TypeScript
 firebase.json / .firebaserc    Hosting site + rewrites, rendered from the registry by scripts/render-firebase.mjs
 scripts/                       validate-registry.mjs · render-firebase.mjs · bootstrap-ci-auth.sh · install-host.sh
 .github/workflows/             ci.yml · deploy.yml · register-deployment.yml · register-app.yml (reusable, workflow_call)
-plugins/eisen-design/          skills: design-tokens · information-architecture · accessibility-ada · ui-style-* (×5)
+plugins/eisen-design/          skills: design-tokens · information-architecture · accessibility-ada · ui-style-* (×6, nordic added in Phase 8)
 plugins/eisen-architecture/    skills: hexagonal-architecture · ports-and-adapters · agent-friendly-codebase
 plugins/eisen-platform/        skills: deploy-versioning · image-tagging · site-plugin (+ generated sites/site-<app>)
 .claude-plugin/marketplace.json  plugin marketplace served from this repo
@@ -148,6 +148,51 @@ smoke tests). `.claude-plugin/marketplace.json` lists the three plugins. `script
 a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer (mirrors eval-driven-dev).
 **Verify** installing into a scratch repo works both ways; `claude plugin` lists the skills.
 
+### Phase 8 — Eisenhold: the 3D portal, platform sign-in and the Vale door (coordinator + agents)
+Jordan's goal (2026-09-23): replace the tiles with a Skyrim-like world where you walk into a gateway per app; Vale
+only for registered, grouped users because it reaches a real account and card; every space open when run locally;
+a grainy, nostalgic "My Get-a-way" room with a Colorado view, a drawing board that files Jira-lite project ideas as
+sticky notes on a cork board, and Pokémon-like animations when a project is completed. Scope: **this repository
+only** (no app repo changes) and only the eisensoftware portal becomes 3D.
+
+**Registry (contract v1, additive).** `platform.auth` = `{enabled, provider: "firebase", projectId, sessionHours
+(1–168), note?, groups: [{id, name, emblem, description}]}` — the group profiles. `apps[].access` = `{groups: [ids
+declared in platform.auth.groups; [] = any signed-in user], note?}`; an app with `access` needs `platform.auth` and
+`web.kind: "cloud-run"`. `auth` joins the reserved app ids. Groups are the Firebase custom claim `groups` (array of
+ids), written only by `scripts/grant-groups.mjs`.
+
+**Gateway door (`apps/gateway`).** Hosting rewrites an app with `access` to the gateway (when `auth.enabled` and
+`gateway.enabled`), and the gateway is the only way in:
+- `POST <app.path>/__door/session` (Bearer Firebase ID token) → verify (RS256 against Google's securetoken JWKS,
+  `iss https://securetoken.google.com/<projectId>`, `aud <projectId>`) → policy → 200 + `Set-Cookie: __session=<envelope>;
+  Path=<app.path>; HttpOnly; SameSite=Lax; Secure` · 401 `sign_in_required` · 403 `group_required`. `DELETE` → 204, platform part removed.
+- `ANY <app.path>{,/**}` → open the envelope, re-check its groups against the current registry, forward to `web.url` +
+  path + query with the app's own `__session` value substituted in, re-seal any `__session` the app sets. Denied
+  navigations → 303 `/?gate=<id>&reason=<sign_in_required|group_required|session_expired|door_unconfigured>`; other
+  denials → JSON 401/403/503. Door responses are never shared-cacheable (`private`, `vary: cookie`).
+- Envelope: `d1.<iv>.<ciphertext>` (base64url), AES-256-GCM, key HKDF-SHA256(`SESSION_SECRET`), AAD `door:<id>`;
+  plaintext `{p: {uid, email?, name?, groups, iat, exp} | null, a: <app cookie> | null, ax: <app cookie expiry> | null}`.
+  Firebase Hosting forwards only `__session`, so the envelope carries both the platform session and the app's cookie.
+- `GET <prefix>/auth/me` (Bearer) → user, groups, per-app decisions. `ANY <prefix>/<id>/*` for an app with `access`
+  needs a Bearer token that passes the policy, except `<prefix>/<id><healthPath>`.
+- Settings: `SESSION_SECRET` (+ `SESSION_SECRET_PREVIOUS`; unset → 503 `door_unconfigured`, fail closed),
+  `ACCESS_MODE=enforce|open` (open refused on Cloud Run), `FIREBASE_AUTH_EMULATOR_HOST` (unsigned emulator tokens, refused
+  on Cloud Run), `UPSTREAM_AUTH=metadata|none` (`X-Serverless-Authorization` ID token so `vale` can later drop `allUsers`).
+
+**Portal (`apps/portal`).** `/` is the world (three.js + Svelte HUD), `/apps` keeps the tiles and deployments as the
+accessible list view. Realm mode: `open` on localhost/dev (every gate and space open, no sign-in) unless `?realm=guarded`;
+`guarded` everywhere else. Sign-in and the group profile use the Firebase JS SDK (config from `PUBLIC_FIREBASE_*` or
+Hosting's `/__/firebase/init.json`; emulator via `PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`). My Get-a-way requires group
+`owner` when guarded; its board lives in Firestore `boards/getaway/cards/*` (rules: `owner` only) when guarded and in
+`localStorage` when open. Scene colors live in one module (`engine/palette.ts`, the WebGL analog of `tokens.css`); UI
+reads tokens only; the portal adopts the new `ui-style-nordic`.
+
+**Verify.** `make check` green (registry, sites, portal build + unit tests, gateway tests); the door's rules proven by
+gateway unit tests; a local rehearsal with the Auth emulator shows sign-up → sealed (no group) → `grant-groups` → the
+Vale gate opens and `/vale/` renders through the local gateway; browser screenshots of the world, the Get-a-way, the
+board and the completion animation; axe on `/apps` and the world's menus. Cloud steps (Auth providers, secret,
+Firestore, grants, IAM) are Jordan's go — `docs/runbooks/platform-auth.md`.
+
 ## Delegation protocol
 
 - The coordinator owns shared contracts (registry schema, token contract, `firebase.json`, workflows, this plan)
@@ -166,7 +211,10 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
 4. Optional (faster than the 30-minute pull sync): create a fine-grained PAT (repo `monorepo`, Contents: write) and add it as secret `MONOREPO_DISPATCH_TOKEN` in the
    vale and healthconnect repos.
 5. Review and merge the vale and healthconnect PRs (Phase 4).
-6. Pick the portal style from the five mockups (Phase 5).
+6. Pick the portal style from the mockups (Phase 5) — Phase 8 adopted `ui-style-nordic` for the realm; swap with one line.
+7. Phase 8 go-steps, in order, in `docs/runbooks/platform-auth.md` (a–i): enable Firebase Authentication in `researcher-455022`
+   (Google + Email/Password, authorized domains), register a web app, create `gateway-session-secret`, create Firestore and deploy
+   `firestore.rules`, sign up in the realm and `grant-groups --set owner,vale` yourself, merge, verify, then close the run.app side door.
 
 ## Progress
 
@@ -183,6 +231,13 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
 - [x] 2026-09-23 CI/CD pull path — the platform reads what is running. `scripts/sync-deployments.mjs` (rules shared with `register-deployment.mjs` through `scripts/lib/registry-io.mjs`, its behaviour and tests unchanged), `.github/workflows/sync-deployments.yml` (every 30 min + `workflow_dispatch`, group `registry-write`, bot commit, reusable deploy), platform contract v1 in the site-plugin skill (site skills regenerated); `MONOREPO_DISPATCH_TOKEN` is now optional. Evidence: `node --test scripts/*.test.mjs` → 20/20 pass; live `--dry-run` → vale and healthconnect `skipped — health JSON has no version`, topology `skipped — no api block`; action-validator exit 0; commit/push retry proven against a throwaway bare remote; `make check` exit 0. Records deploys once each app serves the contract.
 
 - [x] 2026-09-23 Goal: every app repo supports the platform (contract v1: base path, relative redirects, one `__session` cookie at `Path=/<id>`, health JSON with version/commit, `--update-env-vars` deploys). Each app was deployed as a tagged no-traffic revision, verified on its tag URL, then moved to latest (rollback targets kept). topology: hockeyiscool19/topology#1 merged into `modernize`, `topology-00002-juj`. vale: hockeyiscool19/healthconnect#3 merged into `v2-grocery`, `vale-00003-fax` (root kept on run.app via `proxy.ts`; Kroger sign-in unchanged on the direct host). healthconnect: `jordan-lifts-00032-pem` live from branch `platform/eisensoftware` (pushed); opening its PR to `main` was blocked for Claude — Jordan opens/merges it (merging redeploys via its CI). Evidence: all three tiles link to `/<id>/` and show live versions recorded by `sync-deployments.yml` (0 skipped); `/api/health` reports all three ok; a browser click on the Vale tile renders Vale with every asset from `/vale/_next/`.
+
+- [ ] 2026-09-23 Phase 8 — Eisenhold, platform sign-in and the Vale door. Built and verified locally; production waits on the go-steps in `docs/runbooks/platform-auth.md` (merging before step c leaves the deploy red at the secret guard, with production unchanged). Evidence:
+  - `make check` exit 0: `registry: valid … access-controlled: vale`, `sites: up to date (3 skill(s))`, portal build (`index.html`, `apps.html`, `registry.json`), `registry: published copy valid, no repo blocks`, portal `Tests 37 passed | 2 skipped`, gateway `Tests 223 passed (223)`, `layers: ok`; `npm run check` → 0 errors 0 warnings; scripts `node --test` → 57/57; `render-firebase --check` → `up to date (4 rewrites; through the gateway door: /vale)`; `test-firestore-rules.mjs` in the emulator → `126 checks, 126 as expected`.
+  - Local realm in a browser: title → world (aurora, three gates from the registry, square, Word Wall with live versions, guard, dragon); fast travel to the Vale gate; E → loading screen → `http://localhost:5173/vale` renders Vale through the dev proxy (every space open locally). My Get-a-way: grainy film grade, Colorado through the window, drafting table, 3D cork board with handwritten stickies; drawing board filed `GET-4` (feature, labels) to the cork board and `localStorage`; moving a card to Done played the evolution ("…evolved into RELEASE!", EXP, "YOU grew to Lv. 4!").
+  - Guarded rehearsal (`make realm-rehearsal`: Auth + Firestore emulators, gateway door on :8787, portal on :5174): Vale gate sealed with a crimson ward and prompt `Sealed · Vale Gate`; through the portal's same-origin proxy: door without token 401, signed in without guild 403, after `grant-groups --emulator … --set owner,vale` 200 with `__session=d1.<sealed>; Path=/vale; Max-Age=43200; HttpOnly; SameSite=Lax`, `/api/auth/me` allowed, `/vale` 200 `Vale` via `x-upstream-app: vale` (`private, no-store`), without the cookie 303 `/?gate=vale&reason=sign_in_required`, sign-out 204. The owner's Firestore board passes against the real rules and refuses a Vale-only member (`tests/world/firestoreBoard.emulator.test.ts`, 2/2 with the emulators up).
+  - axe-core (WCAG 2.2 AA tags) in the browser: 0 violations on `/apps`, the title, the HUD, map, journal (4 tabs), pause, settings, cork board, drawing board with errors, Word Wall, evolution, guarded notice and sign-in, light and dark.
+  - Go-steps done 2026-09-23 on Jordan's go ("deploy it", Vale locked now): (b) not needed — the site's `/__/firebase/init.json` already serves this project's web config; (c) service account `gateway-runtime`, secret `gateway-session-secret` v1 (generated, never printed; accessor → gateway-runtime, viewer → github-actions), gateway revision `gateway-00011-rhc` runs as `gateway-runtime`, `/api/health` ok for all three; (d) `(default)` Firestore already existed (us-central1, HealthConnect's server-side data, no rules ever released) — `test-firestore-rules.mjs` → `126 checks, 126 as expected`, then `firebase deploy --only firestore:rules` → released. Still Jordan's: (a) enable Authentication (Google + Email/Password) and authorize `eisensoftware.web.app`, (e) sign in, then `grant-groups --set owner,vale`, (h) the run.app side door.
 
 ## Surprises & discoveries
 
@@ -217,6 +272,18 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
   Kroger cookies could never reach the apps through the platform. Contract v1 makes `__session` scoped to `Path=/<id>` mandatory.
 - The Firebase CDN caches 404s from Cloud Run rewrites for 10 minutes (`max-age=600`, `x-cache: HIT`); a Hosting release purges them.
 - healthconnect has no Google login configured (`GOOGLE_CLIENT_ID`/`SECRET` unset), so its pages (body weight, brief) are public.
+- Firebase Hosting forwards only `__session`, and Vale already owns `__session` at `/vale`: the door therefore seals the
+  platform session and Vale's own cookie into one envelope (AES-256-GCM, bound to the app) and hands Vale its cookie back.
+- The live Vale (v2) has no user sign-in of its own, and its run.app URL is public: the door protects `eisensoftware.com/vale`
+  only once Hosting routes it through the gateway, and the side door closes only when `vale` drops `allUsers` (runbook h).
+  Vale's own deploy passes `--allow-unauthenticated`, which re-opens it on every Vale deploy — a Vale repo change for Jordan.
+- An ID token issued before a group was removed can still open a fresh door session within its hour; sessions last up to
+  `sessionHours` (12). Rotating `SESSION_SECRET` ends every session at once (runbook i).
+- firebase-tools 15 refuses Java below 21 (the Firestore emulator); Homebrew `openjdk` (23) works, `openjdk@17` does not.
+- `npm ci` in the portal can SIGSEGV in `@firebase/util`'s postinstall under Node 24 on macOS; a retry passes (CI uses Node 20).
+- `npm install vitest@4` hit an npm arborist bug (`Cannot read properties of null (reading 'edgesOut')`); installing it on
+  its own with `--legacy-peer-deps` worked and a clean `npm ci` from the lockfile passes.
+- three.js 0.186 removed `PCFSoftShadowMap` (falls back to `PCFShadowMap`).
 
 ## Decision log
 
@@ -231,6 +298,12 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
 | 7 | Five initial styles: expressive, editorial, dense, brutalist, organic | Covers consumer, content, pro-tool, dev-tool and wellness (vale) products | Claude, 2026-09-23 — Jordan may swap |
 | 8 | Agents never commit or touch cloud/DNS/other repos; coordinator commits per phase; those actions need Jordan's explicit go | Safety and reviewability | Claude, 2026-09-23 |
 | 9 | One `registry/registry.json` (platform + `apps[]`) instead of one file per app | Generic: a single object to validate, publish, patch and consume | Jordan, 2026-09-23 |
+| 10 | The portal becomes Eisenhold, a three.js realm at `/`; the tiles stay at `/apps` as the accessible list view | Jordan asked for a walkable, Skyrim-like portal; the list keeps every app one click away | Jordan (goal), Claude (shape), 2026-09-23 |
+| 11 | Platform identity is Firebase Authentication in `researcher-455022` (the Hosting project); groups are the custom claim `groups`, granted only by `scripts/grant-groups.mjs` | Same-origin auth handler and `/__/firebase/init.json` on the site's own domains; one project for Hosting, gateway and identity | Claude, 2026-09-23 — Jordan may swap `platform.auth.projectId` |
+| 12 | Warded apps are served through the gateway door (`apps[].access`), not guarded by the client | A 3D gate is only a picture; the door checks identity and group on every request, fails closed, and needs no change in Vale | Claude, 2026-09-23 |
+| 13 | Realm mode is `open` on localhost and under `vite dev` (every gate and room, board in `localStorage`), `guarded` elsewhere; `?realm=guarded` rehearses production | Jordan: "All spaces should be available when deploying locally"; the server-side door is unaffected by the client's mode | Jordan, 2026-09-23 |
+| 14 | My Get-a-way belongs to group `owner`; its board is Firestore `boards/getaway/cards/*` under `firestore.rules` | Personal plans stay private; rules enforce the card schema and immutable keys | Claude, 2026-09-23 |
+| 15 | The portal adopts `ui-style-nordic`; scene colours live in `engine/palette.ts` only | The realm needs one look across HUD and scene; tokens for UI, one palette module for WebGL | Claude, 2026-09-23 — Jordan may swap |
 
 ## Outcomes & retrospective
 
