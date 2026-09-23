@@ -85,7 +85,8 @@ export interface AppManifest {
   readonly routing: AppRouting;
   readonly web: AppWeb;
   readonly api?: AppApi;
-  readonly repo: AppRepo;
+  /** Present in the source registry only; published copies omit it (see `toPublicRegistry`). */
+  readonly repo?: AppRepo;
   readonly deployment: AppDeployment;
   readonly tags?: readonly string[];
 }
@@ -118,6 +119,20 @@ export interface Registry {
   readonly generatedAt: string;
   readonly platform?: Platform;
   readonly apps: readonly AppManifest[];
+}
+
+/**
+ * The registry as it may be published: every app without its `repo` block, which names private repositories
+ * and local checkout paths. The portal's `/registry.json` applies the same rule.
+ */
+export function toPublicRegistry(registry: Registry): Registry {
+  return { ...registry, apps: registry.apps.map(withoutRepo) };
+}
+
+function withoutRepo(app: AppManifest): AppManifest {
+  const { repo, ...published } = app;
+  void repo;
+  return published;
 }
 
 /** Apps that expose an API the gateway fronts, in registry order. */

@@ -5,6 +5,7 @@ import { FakeClock } from "../../../src/adapters/outbound/clock/FakeClock.js";
 import { silentLogger } from "../../../src/adapters/outbound/log/Logger.js";
 import { FakeRegistrySource } from "../../../src/adapters/outbound/registry/FakeRegistrySource.js";
 import { FakeUpstream, fakeResponse } from "../../../src/adapters/outbound/upstream/FakeUpstream.js";
+import { toPublicRegistry } from "../../../src/domain/registry.js";
 import { makeRegistry } from "../../fixtures/registry.js";
 
 const VERSION = "1.2.3";
@@ -31,7 +32,7 @@ describe("GET /api/registry", () => {
     expect(response.headers.get("x-gateway-version")).toBe(VERSION);
     const etag = response.headers.get("etag");
     expect(etag).toMatch(/^"[0-9a-f]{32}"$/);
-    expect(await response.json()).toEqual(JSON.parse(JSON.stringify(makeRegistry())));
+    expect(await response.json()).toEqual(JSON.parse(JSON.stringify(toPublicRegistry(makeRegistry()))));
 
     const cached = await app.request("http://gw.test/api/registry", { headers: { "if-none-match": etag ?? "" } });
     expect(cached.status).toBe(304);

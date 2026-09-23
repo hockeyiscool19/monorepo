@@ -1,0 +1,234 @@
+# Deploy the platform: gateway image → Artifact Registry, gateway → Cloud Run, portal → Firebase Hosting.
+#
+# Triggers: push to main, tags v*, manual (workflow_dispatch) and workflow_call from register-deployment.yml.
+# A push made with GITHUB_TOKEN never triggers `push` workflows, so that workflow calls this one directly and
+# passes the registry commit it just made as `ref`. Every job deploys exactly the commit resolved in `plan`.
+#
+# Auth is keyless (Workload Identity Federation) through four repository VARIABLES (docs/runbooks/ci-auth.md):
+#   GCP_PROJECT · GCP_REGION · GCP_WORKLOAD_IDENTITY_PROVIDER · GCP_SERVICE_ACCOUNT
+#
+# Jobs
+#   plan            resolve commit, version and platform.gateway.{enabled,service,path} from the registry
+#   gateway-image   docker build from the repo root → us-central1-docker.pkg.dev/<project>/platform/gateway
+#                   tags: sha-<12> always, `main` on branch pushes, v<semver> on tag builds; never :latest
+#   gateway-deploy  gcloud run deploy <service> --image …:sha-<12>   (both gateway jobs are skipped while
+#                   platform.gateway.enabled is false, so the pipeline works before the gateway exists)
+#   hosting         make portal-build → render-firebase --check → firebase deploy --only hosting
+#                   (after the gateway, so an /api rewrite never points at a service that is not there yet)
+# <version> is the tag without its `v` on tag builds, else 0.0.0+sha.<12>.
+name: Deploy platform
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit SHA to deploy (register-deployment passes the registry commit it just pushed)
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-platform
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT: ${{ vars.GCP_PROJECT }}
+  GCP_REGION: ${{ vars.GCP_REGION }}
+  AR_HOST: us-central1-docker.pkg.dev
+
+jobs:
+  plan:
+    name: Resolve commit and version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+      short_sha: ${{ steps.resolve.outputs.short_sha }}
+      version: ${{ steps.resolve.outputs.version }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      branch_tag: ${{ steps.resolve.outputs.branch_tag }}
+      image: ${{ steps.resolve.outputs.image }}
+      gateway_enabled: ${{ steps.resolve.outputs.gateway_enabled }}
+      gateway_service: ${{ steps.resolve.outputs.gateway_service }}
+      gateway_path: ${{ steps.resolve.outputs.gateway_path }}
+      site: ${{ steps.resolve.outputs.site }}
+    steps:
+      - name: Require the WIF repository variables
+        env:
+          WIF: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          SA: ${{ vars.GCP_SERVICE_ACCOUNT }}
+        run: |
+          for pair in "GCP_PROJECT=$GCP_PROJECT" "GCP_REGION=$GCP_REGION" "GCP_WORKLOAD_IDENTITY_PROVIDER=$WIF" "GCP_SERVICE_ACCOUNT=$SA"; do
+            if [[ -z "${pair#*=}" ]]; then
+              echo "::error::repository variable ${pair%%=*} is not set — run scripts/bootstrap-ci-auth.sh (docs/runbooks/ci-auth.md)"
+              exit 1
+            fi
+          done
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate the registry
+        run: node scripts/validate-registry.mjs
+      - name: Resolve commit, version and gateway settings
+        id: resolve
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          sha="$(git rev-parse HEAD)"
+          short="${sha:0:12}"
+          tag=""
+          branch_tag=""
+          if [[ -z "$INPUT_REF" && "$GITHUB_REF" == refs/tags/v* ]]; then
+            version="${GITHUB_REF_NAME#v}"
+            tag="v${version}"
+          else
+            version="0.0.0+sha.${short}"
+          fi
+          if [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            branch_tag="main"
+          fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag ${GITHUB_REF_NAME} is not v<semver> (version would be '${version}')"
+            exit 1
+          fi
+          registry() { node -p "const r=JSON.parse(require('fs').readFileSync('registry/registry.json','utf8')); $1"; }
+          {
+            echo "sha=${sha}"
+            echo "short_sha=${short}"
+            echo "version=${version}"
+            echo "tag=${tag}"
+            echo "branch_tag=${branch_tag}"
+            echo "image=${AR_HOST}/${GCP_PROJECT}/platform/gateway"
+            echo "gateway_enabled=$(registry 'r.platform.gateway.enabled === true')"
+            echo "gateway_service=$(registry 'r.platform.gateway.service')"
+            echo "gateway_path=$(registry 'r.platform.gateway.path')"
+            echo "site=$(registry 'r.platform.hosting.site')"
+          } | tee -a "$GITHUB_OUTPUT"
+
+  gateway-image:
+    name: Build and push the gateway image
+    needs: plan
+    if: needs.plan.outputs.gateway_enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DOCKER_BUILDKIT: "1"
+      IMAGE: ${{ needs.plan.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+      - uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Log Docker in to Artifact Registry
+        run: gcloud auth configure-docker "$AR_HOST" --quiet
+      - name: Build (context = repository root, see apps/gateway/Dockerfile)
+        env:
+          SHA: ${{ needs.plan.outputs.sha }}
+          SHORT_SHA: ${{ needs.plan.outputs.short_sha }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          BRANCH_TAG: ${{ needs.plan.outputs.branch_tag }}
+          TAG: ${{ needs.plan.outputs.tag }}
+        run: |
+          tags=(-t "${IMAGE}:sha-${SHORT_SHA}")
+          if [[ -n "$BRANCH_TAG" ]]; then tags+=(-t "${IMAGE}:${BRANCH_TAG}"); fi
+          if [[ -n "$TAG" ]]; then tags+=(-t "${IMAGE}:${TAG}"); fi
+          docker build -f apps/gateway/Dockerfile \
+            --build-arg "IMAGE_REVISION=${SHA}" \
+            --build-arg "IMAGE_VERSION=${VERSION}" \
+            "${tags[@]}" .
+      - name: Push every tag
+        run: docker push --all-tags "$IMAGE"
+
+  gateway-deploy:
+    name: Deploy the gateway to Cloud Run
+    needs: [plan, gateway-image]
+    if: needs.plan.outputs.gateway_enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SERVICE: ${{ needs.plan.outputs.gateway_service }}
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: gcloud run deploy (by the immutable sha- tag)
+        env:
+          IMAGE: ${{ needs.plan.outputs.image }}
+          SHORT_SHA: ${{ needs.plan.outputs.short_sha }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          GATEWAY_PATH: ${{ needs.plan.outputs.gateway_path }}
+        run: |
+          # --update-env-vars (not --set-env-vars) so an operator's REGISTRY_URL / LOG_LEVEL survive a deploy.
+          gcloud run deploy "$SERVICE" \
+            --project "$GCP_PROJECT" --region "$GCP_REGION" \
+            --image "${IMAGE}:sha-${SHORT_SHA}" \
+            --port 8080 --allow-unauthenticated \
+            --update-env-vars "GATEWAY_VERSION=${VERSION},GATEWAY_PATH=${GATEWAY_PATH}" \
+            --quiet
+      - name: Smoke test the health route
+        env:
+          GATEWAY_PATH: ${{ needs.plan.outputs.gateway_path }}
+        run: |
+          url="$(gcloud run services describe "$SERVICE" --project "$GCP_PROJECT" --region "$GCP_REGION" --format='value(status.url)')"
+          echo "service URL: ${url}"
+          if ! curl -fsS --retry 5 --retry-delay 3 --retry-all-errors -D - -o /dev/null "${url}${GATEWAY_PATH}/health" | grep -i '^x-gateway-version'; then
+            echo "::error::${url}${GATEWAY_PATH}/health did not answer with X-Gateway-Version"
+            exit 1
+          fi
+
+  hosting:
+    name: Build the portal and deploy Hosting
+    needs: [plan, gateway-deploy]
+    # gateway-deploy is skipped while the gateway is disabled; run after it whenever it did not fail.
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.gateway-deploy.result == 'success' || needs.gateway-deploy.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build portal
+        run: make portal-build
+      - name: Check firebase.json is rendered from the registry
+        run: node scripts/render-firebase.mjs --check
+      - uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+      - name: firebase deploy --only hosting
+        env:
+          SHORT_SHA: ${{ needs.plan.outputs.short_sha }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        # The auth action exported GOOGLE_APPLICATION_CREDENTIALS; firebase-tools uses it as ADC.
+        run: |
+          npx --yes firebase-tools@latest deploy --only hosting --project "$GCP_PROJECT" --non-interactive \
+            --message "deploy ${SHORT_SHA} (${VERSION})"
+      - name: Show what the portal now publishes
+        env:
+          SITE: ${{ needs.plan.outputs.site }}
+        run: |
+          curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "https://${SITE}.web.app/registry.json" \
+            | jq -r '"generatedAt \(.generatedAt)", (.apps[] | "\(.id)\t\(.deployment.version)\t\(.deployment.sha[0:7])\t\(.deployment.deployedBy)")'

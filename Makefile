@@ -9,9 +9,10 @@ check: registry-validate sites-check
 registry-validate:
 	node scripts/validate-registry.mjs
 
-## portal-build: apps/portal → apps/portal/build (+ registry.json)
+## portal-build: apps/portal → apps/portal/build (+ registry.json, checked to carry no private repo blocks)
 portal-build:
 	cd apps/portal && npm ci --no-audit --no-fund && npm run build
+	node scripts/validate-registry.mjs --published apps/portal/build/registry.json
 
 ## portal-dev: local dev server for the portal
 portal-dev:

@@ -35,7 +35,10 @@ describe("scripts/build-snapshot.ts", () => {
     expect(Object.keys(snapshot)).toEqual(["contractVersion", "generatedAt", "platform", "apps"]);
     expect(snapshot["generatedAt"]).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(snapshot["platform"]).toEqual(document["platform"]);
-    expect(snapshot["apps"]).toEqual(document["apps"]);
+    // The snapshot is the public form: every app minus its repo block.
+    const publicApps = (document["apps"] as Array<Record<string, unknown>>).map(({ repo, ...app }) => (void repo, app));
+    expect(snapshot["apps"]).toEqual(publicApps);
+    expect(JSON.stringify(snapshot)).not.toContain('"repo"');
   });
 
   it("fails the build on an invalid registry", async () => {

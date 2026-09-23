@@ -5,11 +5,22 @@ import { RegistryUnavailableError } from "../../src/domain/errors.js";
 import { makeRegistry } from "../fixtures/registry.js";
 
 describe("getRegistry", () => {
-  it("returns the registry the source provides, every app included", async () => {
+  it("returns every app the source provides, with its deployment values", async () => {
     const registry = makeRegistry();
     const source = new FakeRegistrySource(registry);
-    expect(await getRegistry({ registry: source })).toBe(registry);
+    const published = await getRegistry({ registry: source });
+    expect(published.apps.map((app) => app.id)).toEqual(registry.apps.map((app) => app.id));
+    expect(published.apps.map((app) => app.deployment)).toEqual(registry.apps.map((app) => app.deployment));
+    expect(published.generatedAt).toBe(registry.generatedAt);
     expect(source.loads).toBe(1);
+  });
+
+  it("never publishes an app's repo block (private repository names and local paths)", async () => {
+    const registry = makeRegistry();
+    expect(registry.apps.every((app) => app.repo !== undefined)).toBe(true);
+    const published = await getRegistry({ registry: new FakeRegistrySource(registry) });
+    expect(published.apps.some((app) => "repo" in app)).toBe(false);
+    expect(JSON.stringify(published)).not.toContain('"repo"');
   });
 
   it("propagates registry failures unchanged", async () => {

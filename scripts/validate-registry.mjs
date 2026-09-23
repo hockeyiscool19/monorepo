@@ -8,8 +8,14 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Usage: node scripts/validate-registry.mjs [--published] [path]
+//   default: the source file registry/registry.json (every app must carry `repo`)
+//   --published: a published copy (portal build/registry.json): `generatedAt` required, `repo` must be absent,
+//                because it names private repositories and local checkout paths.
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const registryPath = process.argv[2] ?? join(root, "registry", "registry.json");
+const args = process.argv.slice(2);
+const published = args.includes("--published");
+const registryPath = args.find((a) => !a.startsWith("--")) ?? join(root, "registry", "registry.json");
 const schema = JSON.parse(readFileSync(join(root, "registry", "schema", "registry.schema.json"), "utf8"));
 const appSchema = schema.$defs.app;
 
@@ -60,8 +66,9 @@ function validatePlatform(platform) {
 function validateApp(where, app) {
   const p = appSchema.properties;
   if (!isObject(app)) return fail(where, "must be an object");
-  checkRequired(where, "app", app, appSchema.required);
+  checkRequired(where, "app", app, published ? appSchema.required.filter((k) => k !== "repo") : appSchema.required);
   checkNoExtra(where, "app", app, Object.keys(p));
+  if (published && "repo" in app) fail(where, "repo must not be published (private repository names and local paths)");
 
   if (!isString(app.id) || !matches(app.id, p.id.pattern)) fail(where, `id must match ${p.id.pattern}`);
   if (!isString(app.name) || !app.name.trim()) fail(where, "name must be a non-empty string");
@@ -136,6 +143,7 @@ else {
     fail("registry", `contractVersion must be ${schema.properties.contractVersion.const}`);
   if ("generatedAt" in registry && !(isString(registry.generatedAt) && matches(registry.generatedAt, schema.properties.generatedAt.pattern)))
     fail("registry", "generatedAt must be an ISO-8601 UTC timestamp");
+  if (published && !("generatedAt" in registry)) fail("registry", "generatedAt is required in a published copy");
   validatePlatform(registry.platform);
 
   if (!Array.isArray(registry.apps)) fail("registry", "apps must be an array");
@@ -160,5 +168,6 @@ if (errors.length) {
   process.exitCode = 1;
 } else {
   const ids = registry.apps.map((a) => a.id).join(", ");
-  console.log(`registry: valid — platform ${registry.platform.domain}, ${registry.apps.length} app(s) (${ids})`);
+  const kind = published ? "published copy valid, no repo blocks" : "valid";
+  console.log(`registry: ${kind} — platform ${registry.platform.domain}, ${registry.apps.length} app(s) (${ids})`);
 }

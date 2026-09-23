@@ -163,7 +163,7 @@ export function isAppManifest(value: unknown, where: string, problems: Problems)
   checkChild(value, "routing", where, problems, false, checkRouting);
   checkChild(value, "web", where, problems, false, checkWeb);
   checkChild(value, "api", where, problems, true, checkApi);
-  checkChild(value, "repo", where, problems, false, checkRepo);
+  checkChild(value, "repo", where, problems, true, checkRepo);   // optional: published copies omit it
   checkChild(value, "deployment", where, problems, false, checkDeployment);
   checkOptionalStringArray(value, "tags", where, problems);
   return problems.length === before;

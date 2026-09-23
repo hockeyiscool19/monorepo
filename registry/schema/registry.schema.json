@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eisensoftware.com/schema/registry.schema.json",
   "title": "Platform registry",
-  "description": "registry/registry.json: the single source of truth for the platform (domain, hosting, gateway) and every application on it. The portal tiles, firebase.json rewrites and gateway routes are all rendered from this file. The published copy at https://eisensoftware.com/registry.json is this object plus a generatedAt timestamp. Each app's `deployment` block is patched by CI when an app repo reports a deploy.",
+  "description": "registry/registry.json: the single source of truth for the platform (domain, hosting, gateway) and every application on it. The portal tiles, firebase.json rewrites and gateway routes are all rendered from this file. The published copy at https://eisensoftware.com/registry.json is this object plus a generatedAt timestamp, with each app's `repo` block removed (private repository names and local paths). Each app's `deployment` block is patched by CI when an app repo reports a deploy.",
   "type": "object",
   "additionalProperties": false,
   "required": ["contractVersion", "platform", "apps"],

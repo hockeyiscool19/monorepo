@@ -19,7 +19,7 @@ Workload Identity Federation, the same mechanism vale's `deploy.yml` already exp
 ```
 
 widens the provider to every `hockeyiscool19/*` repo, lets `monorepo`, `healthconnect` (vale) and `garmin`
-(healthconnect) impersonate the service account, adds `roles/firebasehosting.admin` and
+(healthconnect) impersonate the service account, adds `roles/firebasehosting.admin`, `roles/cloudbuild.builds.editor` (vale deploys with `--source`, which builds in Cloud Build) and
 `roles/serviceusage.serviceUsageConsumer`, and prints the four repository **variables**. Add `--apply-github`
 to set them through `gh` in one go. Nothing here is a secret.
 

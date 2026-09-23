@@ -35,6 +35,13 @@ describe("parseRegistry", () => {
     expect(registry.platform?.gateway?.path).toBe("/api");
   });
 
+  it("accepts a published document whose apps carry no repo block", () => {
+    const document = registryDocument();
+    for (const app of document["apps"] as Array<Record<string, unknown>>) delete app["repo"];
+    const registry = parseRegistry(document);
+    expect(registry.apps.every((app) => app.repo === undefined)).toBe(true);
+  });
+
   it("requires generatedAt when neither the document nor the caller provides it", () => {
     const document = registryDocument();
     delete document["generatedAt"];
@@ -76,7 +83,6 @@ describe("parseRegistry", () => {
         "apps[0].name is required",
         "apps[0].routing is required",
         "apps[0].web is required",
-        "apps[0].repo is required",
         "apps[0].deployment is required",
       ]),
     );

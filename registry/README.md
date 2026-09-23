@@ -14,12 +14,14 @@ Three things are rendered from it and must never be edited by hand:
 
 | Rendered artifact | Renderer | Consumer |
 |---|---|---|
-| Portal tiles and the published `/registry.json` (this object plus `generatedAt`) | `apps/portal` build | visitors, the gateway |
+| Portal tiles and the published `/registry.json` (this object plus `generatedAt`, minus each app's `repo` block) | `apps/portal` build | visitors, the gateway |
 | `rewrites` in `firebase.json` (gateway rewrite when `platform.gateway.enabled`, then one per Cloud Run app) | `scripts/render-firebase.mjs` | Firebase Hosting |
 | Gateway routes (`/api/<id>/*`) and health fan-out | `apps/gateway` at startup (reads the published `registry.json`) | API clients |
 
 The schema is `registry/schema/registry.schema.json` (`$defs.app` describes one entry).
 `node scripts/validate-registry.mjs [path]` enforces it with no dependencies, including unique `id` and `path`.
+`--published <path>` checks a published copy instead: `generatedAt` required and no `repo` block anywhere, because
+`repo` names private repositories and local checkout paths. `make portal-build` runs it on every build.
 
 ## Add an app
 

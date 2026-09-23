@@ -47,7 +47,7 @@ for repo in "${REPOS[@]}"; do
 done
 
 echo "== 3. Project roles for ${SA}"
-for role in roles/firebasehosting.admin roles/serviceusage.serviceUsageConsumer roles/run.admin roles/artifactregistry.writer roles/iam.serviceAccountUser; do
+for role in roles/firebasehosting.admin roles/serviceusage.serviceUsageConsumer roles/cloudbuild.builds.editor roles/run.admin roles/artifactregistry.writer roles/iam.serviceAccountUser; do
   gcloud projects add-iam-policy-binding "${PROJECT}" --member="serviceAccount:${SA}" --role="${role}" \
     --condition=None --quiet >/dev/null
   echo "   ${role}"

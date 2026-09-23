@@ -1,0 +1,102 @@
+# Reusable workflow for app repositories: tell the platform that a deploy landed.
+#
+# It sends `repository_dispatch` (event_type app-deployed) to hockeyiscool19/monorepo with plain curl against the
+# GitHub API — no third-party action — and fails loudly on any non-2xx answer. The monorepo's
+# register-deployment.yml then records {version, sha, imageTag, url} for the app and redeploys the portal.
+#
+# Caller snippet (add as the last job of the app's deploy workflow, after the Cloud Run deploy succeeded):
+#
+#   register:
+#     needs: deploy
+#     uses: hockeyiscool19/monorepo/.github/workflows/register-app.yml@main
+#     with:
+#       app_id: vale                                   # the app's `id` in registry/registry.json
+#       version: ${{ needs.deploy.outputs.version }}   # semver: tag without `v`, else 0.0.0+sha.<12>
+#       sha: ${{ github.sha }}                         # optional, this is the default
+#       image_tag: sha-${{ ... }}                      # optional; empty for source deploys
+#       url: https://<service>-382031913173.us-central1.run.app   # optional; the Cloud Run URL (web.url)
+#     secrets:
+#       dispatch_token: ${{ secrets.MONOREPO_DISPATCH_TOKEN }}
+#
+# MONOREPO_DISPATCH_TOKEN is a fine-grained PAT with Contents: read+write on hockeyiscool19/monorepo
+# (docs/runbooks/ci-auth.md, "The one real secret").
+name: Register app deployment
+
+on:
+  workflow_call:
+    inputs:
+      app_id:
+        description: The app's id in registry/registry.json
+        type: string
+        required: true
+      version:
+        description: Deployed version (x.y.z, optionally with a -pre or +build suffix)
+        type: string
+        required: true
+      sha:
+        description: Deployed commit (7–40 hex); defaults to the calling workflow's commit
+        type: string
+        required: false
+        default: ${{ github.sha }}
+      image_tag:
+        description: Image tag that was deployed (sha-<12> per the image-tagging standard); empty if none
+        type: string
+        required: false
+        default: ""
+      url:
+        description: Public https URL of the deployed service (becomes web.url); empty to leave it unchanged
+        type: string
+        required: false
+        default: ""
+      platform_repo:
+        description: Repository that owns the registry
+        type: string
+        required: false
+        default: hockeyiscool19/monorepo
+    secrets:
+      dispatch_token:
+        description: Fine-grained PAT with Contents write on the platform repository
+        required: true
+
+jobs:
+  dispatch:
+    name: repository_dispatch app-deployed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Send app-deployed to ${{ inputs.platform_repo }}
+        env:
+          APP_ID: ${{ inputs.app_id }}
+          VERSION: ${{ inputs.version }}
+          SHA: ${{ inputs.sha }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          URL: ${{ inputs.url }}
+          REPO: ${{ inputs.platform_repo }}
+          TOKEN: ${{ secrets.dispatch_token }}
+        run: |
+          set -euo pipefail
+          SHA="${SHA:-$GITHUB_SHA}"
+          fail() { echo "::error::$1"; exit 1; }
+          [[ -n "$TOKEN" ]] || fail "secret dispatch_token is empty — add MONOREPO_DISPATCH_TOKEN to this repository"
+          [[ "$APP_ID" =~ ^[a-z][a-z0-9-]{1,30}$ ]] || fail "app_id '${APP_ID}' is not a registry id"
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]] || fail "version '${VERSION}' is not x.y.z[-pre|+build]"
+          [[ "$SHA" =~ ^[0-9a-f]{7,40}$ ]] || fail "sha '${SHA}' is not 7–40 hex characters"
+          [[ ${#IMAGE_TAG} -le 128 ]] || fail "image_tag is longer than 128 characters"
+          [[ -z "$URL" || "$URL" =~ ^https:// ]] || fail "url '${URL}' must start with https://"
+
+          body="$(jq -cn --arg id "$APP_ID" --arg version "$VERSION" --arg sha "$SHA" --arg imageTag "$IMAGE_TAG" --arg url "$URL" \
+            '{event_type: "app-deployed", client_payload: {id: $id, version: $version, sha: $sha, imageTag: $imageTag, url: $url}}')"
+          echo "→ ${REPO}: ${body}"
+          out="$(mktemp)"
+          code="$(curl -sS -o "$out" -w '%{http_code}' -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPO}/dispatches" \
+            -d "$body")"
+          if [[ "$code" != 2* ]]; then
+            cat "$out"
+            fail "GitHub answered HTTP ${code} to the repository_dispatch (expected 204). Check that MONOREPO_DISPATCH_TOKEN has Contents: write on ${REPO} and has not expired."
+          fi
+          echo "dispatched app-deployed for ${APP_ID} ${VERSION} (${SHA:0:7}) to ${REPO} — HTTP ${code}"
+          echo "Registered **${APP_ID}** ${VERSION} (${SHA:0:7}) with ${REPO} — HTTP ${code}" >> "$GITHUB_STEP_SUMMARY"

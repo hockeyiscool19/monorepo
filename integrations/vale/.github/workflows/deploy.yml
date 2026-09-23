@@ -1,0 +1,157 @@
+# Vale — deploy to Cloud Run and register the deploy with the eisensoftware platform.
+#
+#   push to main, tags v*  → production: Cloud Run `vale`, then register-app.yml → the portal tile shows the version
+#   pull requests (this repo) → preview: Cloud Run `vale-preview`, behind the `preview` GitHub Environment (reviewer)
+#   workflow_dispatch      → production from main or a v* tag, preview from any other ref
+#
+# Needs (README.md next to this file; docs/runbooks/ci-auth.md in hockeyiscool19/monorepo):
+#   variables    GCP_PROJECT · GCP_REGION · GCP_WORKLOAD_IDENTITY_PROVIDER · GCP_SERVICE_ACCOUNT  (scripts/bootstrap-ci-auth.sh)
+#                optional: GCP_PROJECT_NUMBER (default 382031913173), PUBLIC_APP_URL per environment (defaults below)
+#   secrets      MONOREPO_DISPATCH_TOKEN (fine-grained PAT, Contents: write on hockeyiscool19/monorepo)
+#                optional: KROGER_CLIENT_ID · KROGER_CLIENT_SECRET · KROGER_ZIP · KROGER_LOCATION_ID
+#   environments production (main + v* only, no reviewers) · preview (required reviewer) — scripts/setup-github-environments.sh
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.event_name == 'pull_request' && format('preview-{0}', github.event.pull_request.number) || 'production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  plan:
+    name: Target
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+      GCP_PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER || '382031913173' }}
+    outputs:
+      target: ${{ steps.plan.outputs.target }}
+      service: ${{ steps.plan.outputs.service }}
+      run_url: ${{ steps.plan.outputs.run_url }}
+      public_url: ${{ steps.plan.outputs.public_url }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - id: plan
+        run: |
+          short="${GITHUB_SHA:0:12}"
+          if [[ "$GITHUB_EVENT_NAME" != "pull_request" && ( "$GITHUB_REF" == "refs/heads/main" || "$GITHUB_REF" == refs/tags/v* ) ]]; then
+            target="production"; service="vale"
+            public_url="https://eisensoftware.com/vale"
+          else
+            target="preview"; service="vale-preview"
+            public_url="https://vale-preview-${GCP_PROJECT_NUMBER}.${GCP_REGION}.run.app/vale"
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; else version="0.0.0+sha.${short}"; fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag ${GITHUB_REF_NAME} is not v<semver>"; exit 1
+          fi
+          # Deterministic Cloud Run URL: the form the platform registry stores as web.url.
+          run_url="https://${service}-${GCP_PROJECT_NUMBER}.${GCP_REGION}.run.app"
+          printf 'target=%s\nservice=%s\nrun_url=%s\npublic_url=%s\nversion=%s\n' \
+            "$target" "$service" "$run_url" "$public_url" "$version" | tee -a "$GITHUB_OUTPUT"
+
+  check:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  deploy:
+    name: Cloud Run ${{ needs.plan.outputs.service }}
+    needs: [plan, check]
+    # Pull requests from forks have no secrets and no OIDC token; everything else deploys.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ needs.plan.outputs.target }}
+      url: ${{ needs.plan.outputs.run_url }}/vale
+    env:
+      GCP_PROJECT: ${{ vars.GCP_PROJECT || 'researcher-455022' }}
+      GCP_REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+      SERVICE: ${{ needs.plan.outputs.service }}
+      # An environment-scoped variable PUBLIC_APP_URL overrides the default computed in `plan`.
+      PUBLIC_APP_URL: ${{ vars.PUBLIC_APP_URL || needs.plan.outputs.public_url }}
+    steps:
+      - name: Require the Workload Identity variables
+        env:
+          WIF: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          SA: ${{ vars.GCP_SERVICE_ACCOUNT }}
+        run: |
+          if [[ -z "$WIF" || -z "$SA" ]]; then
+            echo "::error::Set repository variables GCP_WORKLOAD_IDENTITY_PROVIDER and GCP_SERVICE_ACCOUNT (monorepo: scripts/bootstrap-ci-auth.sh)"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy from source
+        id: deploy
+        env:
+          KROGER_CLIENT_ID: ${{ secrets.KROGER_CLIENT_ID }}
+          KROGER_CLIENT_SECRET: ${{ secrets.KROGER_CLIENT_SECRET }}
+          KROGER_ZIP: ${{ secrets.KROGER_ZIP }}
+          KROGER_LOCATION_ID: ${{ secrets.KROGER_LOCATION_ID }}
+        run: |
+          set -euo pipefail
+          escape() { printf '%s' "$1" | sed 's/,/\\,/g'; }
+          # Public URL always (basePath /vale prefixes the API routes, so the OAuth callback lives under /vale/api).
+          env_vars="NEXT_PUBLIC_APP_URL=$(escape "$PUBLIC_APP_URL")"
+          env_vars+=",KROGER_REDIRECT_URI=$(escape "${PUBLIC_APP_URL}/api/grocery/oauth/callback")"
+          # Kroger keys only when the secrets exist; --update-env-vars keeps the service's current values otherwise.
+          if [[ -n "${KROGER_CLIENT_ID}" && -n "${KROGER_CLIENT_SECRET}" ]]; then
+            env_vars+=",KROGER_CLIENT_ID=$(escape "$KROGER_CLIENT_ID")"
+            env_vars+=",KROGER_CLIENT_SECRET=$(escape "$KROGER_CLIENT_SECRET")"
+            env_vars+=",KROGER_ZIP=$(escape "${KROGER_ZIP:-27604}")"
+            env_vars+=",KROGER_LOCATION_ID=$(escape "${KROGER_LOCATION_ID:-09700353}")"
+          fi
+          gcloud run deploy "$SERVICE" --source . \
+            --project "$GCP_PROJECT" --region "$GCP_REGION" \
+            --allow-unauthenticated --port 8080 --memory 512Mi \
+            --update-env-vars "$env_vars" \
+            --quiet
+          gcloud run services describe "$SERVICE" --project "$GCP_PROJECT" --region "$GCP_REGION" --format='value(status.url)'
+
+      - name: Smoke test through the base path
+        env:
+          RUN_URL: ${{ needs.plan.outputs.run_url }}
+        run: |
+          curl -fsS --retry 6 --retry-delay 5 --retry-all-errors "${RUN_URL}/vale/api/grocery/health"
+          echo
+          echo "deployed ${SERVICE} → ${RUN_URL}/vale (public: ${PUBLIC_APP_URL}, redirect: ${PUBLIC_APP_URL}/api/grocery/oauth/callback)"
+
+  register:
+    name: Register with the platform
+    needs: [plan, deploy]
+    if: needs.plan.outputs.target == 'production'
+    permissions:
+      contents: read
+    uses: hockeyiscool19/monorepo/.github/workflows/register-app.yml@main
+    with:
+      app_id: vale
+      version: ${{ needs.plan.outputs.version }}
+      sha: ${{ github.sha }}
+      url: ${{ needs.plan.outputs.run_url }}
+    secrets:
+      dispatch_token: ${{ secrets.MONOREPO_DISPATCH_TOKEN }}

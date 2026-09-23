@@ -15,6 +15,10 @@ jobs:
           node-version: 20
       - name: Validate registry
         run: node scripts/validate-registry.mjs
+      - name: Self-test the registry scripts (register-deployment)
+        run: node --test scripts/*.test.mjs
+      - name: Check the generated site-<id> skills are current
+        run: node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs --check
       - name: Render firebase.json and check it is committed
         if: hashFiles('scripts/render-firebase.mjs') != ''
         run: |

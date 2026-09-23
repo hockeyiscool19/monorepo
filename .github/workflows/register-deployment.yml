@@ -1,0 +1,107 @@
+# Record an app deployment in the registry and redeploy the platform.
+#
+# App repos call register-app.yml, which sends `repository_dispatch` (event_type app-deployed) to this repo with
+#   client_payload: { "id": "vale", "version": "1.2.3", "sha": "<7-40 hex>", "imageTag": "sha-…", "url": "https://…" }
+# This workflow patches that app's `deployment` block in registry/registry.json (scripts/register-deployment.mjs),
+# validates the registry, commits as github-actions[bot] and pushes to main, then calls deploy.yml with the new
+# commit. It has to call deploy.yml directly: a push made with GITHUB_TOKEN never triggers `push` workflows.
+#
+# Manual test:  gh api repos/hockeyiscool19/monorepo/dispatches -f event_type=app-deployed \
+#                 -f 'client_payload[id]=vale' -f 'client_payload[version]=0.2.0' -f 'client_payload[sha]=<sha>'
+# Runbook: docs/runbooks/cicd-sync.md
+name: Register deployment
+
+on:
+  repository_dispatch:
+    types: [app-deployed]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  register:
+    name: Patch the registry and push
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Two dispatches serialize here; the deploy below has its own group (deploy-platform).
+    concurrency:
+      group: registry-write
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Patch, validate, commit and push (retries once more on a concurrent push to main)
+        id: commit
+        env:
+          # The payload is untrusted text from another repository: it only ever reaches the script as an argument
+          # (never interpolated into shell), and the commit subject uses values the script has already validated.
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git fetch --quiet origin main
+            git reset --quiet --hard origin/main
+            node scripts/register-deployment.mjs --payload "$PAYLOAD"
+            node scripts/validate-registry.mjs
+            if git diff --quiet -- registry/registry.json; then
+              echo "registry already records this deployment; nothing to commit"
+              { echo "changed=false"; echo "sha=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            id="$(jq -r '.id' <<< "$PAYLOAD")"
+            version="$(jq -r '.version' <<< "$PAYLOAD")"
+            sha7="$(jq -r '.sha[0:7]' <<< "$PAYLOAD")"
+            git add registry/registry.json
+            git commit --quiet -m "Record ${id} deployment ${version} (${sha7})"
+            if git push origin HEAD:main; then
+              { echo "changed=true"; echo "sha=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"
+              echo "pushed $(git rev-parse --short HEAD): Record ${id} deployment ${version} (${sha7})"
+              exit 0
+            fi
+            echo "push rejected on attempt ${attempt} (main moved); re-applying on the new main"
+          done
+          echo "::error::could not push the registry update after 3 attempts"
+          exit 1
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Register deployment"
+            echo
+            echo '```json'
+            jq . <<< "$PAYLOAD"
+            echo '```'
+            echo
+            echo "changed: ${CHANGED:-?} · commit: ${SHA:-?}"
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          PAYLOAD: ${{ toJSON(github.event.client_payload) }}
+          CHANGED: ${{ steps.commit.outputs.changed }}
+          SHA: ${{ steps.commit.outputs.sha }}
+
+  deploy:
+    name: Deploy platform
+    needs: register
+    if: needs.register.outputs.changed == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: deploy-platform
+      cancel-in-progress: false
+    uses: ./.github/workflows/deploy.yml
+    with:
+      ref: ${{ needs.register.outputs.sha }}
+    secrets: inherit

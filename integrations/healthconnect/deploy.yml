@@ -1,0 +1,128 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+env:
+  PROJECT_ID: researcher-455022
+  REGION: us-central1
+  SERVICE: jordan-lifts
+  IMAGE: us-central1-docker.pkg.dev/researcher-455022/jordan-lifts/jordan-lifts
+  # Apex + path prefix: https://eisensoftware.com/healthconnect
+  PUBLIC_HOST: https://eisensoftware.com/healthconnect
+  BASE_PATH: /healthconnect
+  # Deterministic Cloud Run URL: what the platform registry stores as web.url
+  RUN_URL: https://jordan-lifts-382031913173.us-central1.run.app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      image_tag: ${{ steps.meta.outputs.image_tag }}
+      run_url: ${{ steps.meta.outputs.run_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version and image tag (platform image-tagging standard)
+        id: meta
+        run: |
+          short="${GITHUB_SHA:0:12}"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then version="${GITHUB_REF_NAME#v}"; else version="0.0.0+sha.${short}"; fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::tag ${GITHUB_REF_NAME} is not v<semver>"; exit 1
+          fi
+          printf 'version=%s\nimage_tag=sha-%s\nrun_url=%s\n' "$version" "$short" "$RUN_URL" | tee -a "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/382031913173/locations/global/workloadIdentityPools/github-pool/providers/github
+          service_account: github-actions@researcher-455022.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push
+        env:
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          # sha-<12> is the immutable tag the deploy uses; :<sha>, :latest and :v* stay for humans and older scripts.
+          TAGS="-t ${IMAGE}:${IMAGE_TAG} -t ${IMAGE}:${GITHUB_SHA} -t ${IMAGE}:latest"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            TAGS="${TAGS} -t ${IMAGE}:${GITHUB_REF_NAME}"
+          fi
+          # shellcheck disable=SC2086
+          docker build ${TAGS} .
+          docker push "${IMAGE}:${IMAGE_TAG}"
+          docker push "${IMAGE}:${GITHUB_SHA}"
+          docker push "${IMAGE}:latest"
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            docker push "${IMAGE}:${GITHUB_REF_NAME}"
+          fi
+
+      - name: Deploy Cloud Run
+        env:
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+        run: |
+          # Firestore API + DB + IAM are one-time setup (gcp/deploy.sh). CI SA cannot enable APIs.
+          # Firebase web config + FIRESTORE_PROJECT live in Secret Manager (see gcp/map-domain.sh / setup).
+          FIRESTORE_PROJECT_VAL="$(gcloud secrets versions access latest --secret=FIRESTORE_PROJECT --project="${PROJECT_ID}")"
+          gcloud run deploy "${SERVICE}" \
+            --project "${PROJECT_ID}" \
+            --region "${REGION}" \
+            --image "${IMAGE}:${IMAGE_TAG}" \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080 \
+            --timeout 15m \
+            --min-instances 0 \
+            --max-instances 1 \
+            --concurrency 8 \
+            --memory 1Gi \
+            --cpu 1 \
+            --cpu-throttling \
+            --no-cpu-boost \
+            --session-affinity \
+            --update-env-vars "DATABASE_BACKEND=firestore,FIRESTORE_PROJECT=${FIRESTORE_PROJECT_VAL},BASE_PATH=${BASE_PATH},PUBLIC_URL=${PUBLIC_HOST},HEALTHCONNECT_URL=${PUBLIC_HOST}" \
+            --update-secrets "FIREBASE_API_KEY=FIREBASE_API_KEY:latest,FIREBASE_APP_ID=FIREBASE_APP_ID:latest,FIREBASE_AUTH_DOMAIN=FIREBASE_AUTH_DOMAIN:latest,FIREBASE_STORAGE_BUCKET=FIREBASE_STORAGE_BUCKET:latest,FIREBASE_MESSAGING_SENDER_ID=FIREBASE_MESSAGING_SENDER_ID:latest"
+
+  # Its own job so a scheduler hiccup no longer hides a successful deploy (the last four runs failed here).
+  schedule:
+    name: Schedule Garmin API jobs
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/382031913173/locations/global/workloadIdentityPools/github-pool/providers/github
+          service_account: github-actions@researcher-455022.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - run: PUBLIC_HOST="${PUBLIC_HOST}" ./gcp/schedule-garmin.sh
+
+  # Tell the platform (hockeyiscool19/monorepo) so the eisensoftware.com tile shows this version.
+  register:
+    name: Register with the platform
+    needs: deploy
+    permissions:
+      contents: read
+    uses: hockeyiscool19/monorepo/.github/workflows/register-app.yml@main
+    with:
+      app_id: healthconnect
+      version: ${{ needs.deploy.outputs.version }}
+      sha: ${{ github.sha }}
+      image_tag: ${{ needs.deploy.outputs.image_tag }}
+      url: ${{ needs.deploy.outputs.run_url }}
+    secrets:
+      dispatch_token: ${{ secrets.MONOREPO_DISPATCH_TOKEN }}
