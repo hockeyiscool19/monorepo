@@ -76,10 +76,14 @@ export function visibleApps(apps: AppManifest[] = registry.apps): AppManifest[] 
 		.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || a.name.localeCompare(b.name, 'en'));
 }
 
-/** Where a tile points: its path once routing is verified, the app's own URL until then. */
+/**
+ * Where a tile points: its path once routing is verified, the app's own URL until then.
+ * The path gets a trailing slash so the request lands on the app's index directly; without it some apps
+ * (healthconnect) answer with a redirect to their own Cloud Run host, which would leave the platform domain.
+ */
 export function tileHref(app: AppManifest): string | null {
 	if (app.status === 'planned') return null;
-	return app.routing.ready ? app.path : app.web.url;
+	return app.routing.ready ? `${app.path}/` : app.web.url;
 }
 
 export function toTile(app: AppManifest): TileModel {

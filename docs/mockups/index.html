@@ -1,0 +1,252 @@
+<!doctype html>
+<!--
+  Style gallery for the eisensoftware platform.
+  Loads the neutral reference (plugins/eisen-design/mockups/reference.html) and each ui-style-<name>/mockup.html
+  in an embedded frame, with a style switcher, a light/dark toggle and a width toggle. The gallery chrome uses the
+  neutral tokens only. For the Dark button to reach into a mockup, serve the repo over HTTP (see the note below);
+  browsers isolate file:// documents from each other.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>eisensoftware — style gallery</title>
+  <link rel="stylesheet" href="../../plugins/eisen-design/skills/design-tokens/tokens.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; }
+    .skip-link { position: absolute; top: -100px; left: var(--space-2); z-index: 10; padding: var(--space-2) var(--space-3);
+      background: var(--color-accent); color: var(--color-on-accent); border-radius: var(--radius-sm); }
+    .skip-link:focus { top: var(--space-2); }
+    .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--gutter);
+      border-bottom: 1px solid var(--color-border); background: var(--color-bg-elevated); }
+    h1 { margin: 0; font: var(--weight-bold) var(--text-lg) / var(--leading-tight) var(--font-display); }
+    [role="tablist"] { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+    .btn { min-height: 44px; min-width: 44px; padding: var(--space-2) var(--space-3); font: inherit; font-size: var(--text-sm);
+      font-weight: var(--weight-medium); color: var(--color-text); background: var(--color-surface);
+      border: 1px solid var(--color-border-strong); border-radius: var(--radius-full); cursor: pointer;
+      transition: background var(--duration-fast) var(--ease-standard); }
+    .btn:hover { background: var(--color-surface-hover); }
+    .btn[aria-selected="true"], .btn[aria-pressed="true"] { background: var(--color-accent); color: var(--color-on-accent);
+      border-color: var(--color-accent); }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-left: auto; }
+    fieldset { display: flex; gap: var(--space-1); margin: 0; padding: 0; border: 0; }
+    .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    main { padding: var(--space-4) var(--gutter) var(--space-7); }
+    .status { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); margin: 0 0 var(--space-3);
+      font-size: var(--text-sm); color: var(--color-text-muted); min-height: 1.5em; }
+    .stage { overflow: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+    .frame { display: block; height: 78vh; min-height: 480px; border: 0; background: var(--color-surface); }
+    .placeholder { display: grid; place-content: center; gap: var(--space-2); min-height: 320px; padding: var(--space-6);
+      text-align: center; color: var(--color-text-muted); }
+    .placeholder strong { color: var(--color-text); font-size: var(--text-lg); }
+    code { font-family: var(--font-mono); font-size: 0.9em; }
+    a { color: var(--color-accent); }
+    .how { max-width: 72ch; margin-top: var(--space-6); font-size: var(--text-sm); }
+    .how h2 { margin: 0 0 var(--space-2); font-size: var(--text-lg); }
+    .how dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-1) var(--space-3); margin: var(--space-3) 0; }
+    .how dt { font-weight: var(--weight-medium); }
+    .how dd { margin: 0; }
+    .how ol { padding-left: var(--space-5); }
+    @media (max-width: 600px) { .controls { margin-left: 0; } .how dl { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#stage">Skip to the mockup</a>
+
+  <header class="bar">
+    <h1>Style gallery</h1>
+    <div role="tablist" aria-label="Style">
+      <button type="button" class="btn" role="tab" id="tab-neutral" data-style="neutral" aria-selected="true" aria-controls="stage">Neutral</button>
+      <button type="button" class="btn" role="tab" id="tab-expressive" data-style="expressive" aria-selected="false" aria-controls="stage" tabindex="-1">Expressive</button>
+      <button type="button" class="btn" role="tab" id="tab-editorial" data-style="editorial" aria-selected="false" aria-controls="stage" tabindex="-1">Editorial</button>
+      <button type="button" class="btn" role="tab" id="tab-dense" data-style="dense" aria-selected="false" aria-controls="stage" tabindex="-1">Dense</button>
+      <button type="button" class="btn" role="tab" id="tab-brutalist" data-style="brutalist" aria-selected="false" aria-controls="stage" tabindex="-1">Brutalist</button>
+      <button type="button" class="btn" role="tab" id="tab-organic" data-style="organic" aria-selected="false" aria-controls="stage" tabindex="-1">Organic</button>
+    </div>
+    <div class="controls">
+      <fieldset>
+        <legend class="vh">Frame width</legend>
+        <button type="button" class="btn" data-width="360" aria-pressed="false">360</button>
+        <button type="button" class="btn" data-width="768" aria-pressed="false">768</button>
+        <button type="button" class="btn" data-width="1280" aria-pressed="true">1280</button>
+      </fieldset>
+      <button type="button" class="btn" id="theme" aria-pressed="false">Dark</button>
+    </div>
+  </header>
+
+  <main>
+    <p class="status"><span id="status" role="status" aria-live="polite"></span><a id="open" href="../../plugins/eisen-design/mockups/reference.html" target="_blank" rel="noopener">Open this mockup in its own tab</a></p>
+    <section id="stage" class="stage" role="tabpanel" aria-labelledby="tab-neutral" tabindex="0">
+      <noscript><p class="placeholder">This gallery needs JavaScript to switch styles. Open the mockups directly:
+        <a href="../../plugins/eisen-design/mockups/reference.html">neutral</a>, or
+        <code>plugins/eisen-design/skills/ui-style-&lt;name&gt;/mockup.html</code>.</p></noscript>
+    </section>
+
+    <section class="how" aria-labelledby="how-heading">
+      <h2 id="how-heading">How to choose</h2>
+      <p>Every mockup is the same screen with the same markup as the neutral reference; only <code>tokens.css</code>
+        and <code>components.css</code> differ, and every style passes the same contrast checker. So the choice is
+        about fit, not correctness.</p>
+      <dl>
+        <dt>Expressive</dt><dd>consumer and mobile-first products; rounded, colorful, springy.</dd>
+        <dt>Editorial</dt><dd>reading, docs and marketing; typography-led, one accent, sharp edges.</dd>
+        <dt>Dense</dt><dd>dashboards, admin and developer tools; compact, keyboard-first, data-heavy.</dd>
+        <dt>Brutalist</dt><dd>utilities and tools that want to look honest; raw, high-contrast, few effects.</dd>
+        <dt>Organic</dt><dd>wellness and habit products such as Vale; soft shapes, warm palette, calm motion.</dd>
+      </dl>
+      <ol>
+        <li>Judge at 360 px first, then 1280 px, then toggle Dark. A style that only works at one width or in one
+          theme is not finished.</li>
+        <li>Check what stays readable: badge text, the muted meta line, the focus ring on the primary button
+          (Tab into the frame), the table at 360 px.</li>
+        <li>Pick by audience and content, not by novelty. Record the decision in <code>docs/EXECUTION_PLAN.md</code>;
+          the portal then adopts that style's <code>tokens.css</code>.</li>
+      </ol>
+      <p>Dark reaches into a mockup only when this page is served over HTTP (from the repo root:
+        <code>python3 -m http.server 8080</code>, then <code>http://localhost:8080/docs/mockups/</code>). Opened as a
+        file, use the mockup's own "Dark mode" button instead.</p>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const SRC = {
+        neutral: "../../plugins/eisen-design/mockups/reference.html",
+        expressive: "../../plugins/eisen-design/skills/ui-style-expressive/mockup.html",
+        editorial: "../../plugins/eisen-design/skills/ui-style-editorial/mockup.html",
+        dense: "../../plugins/eisen-design/skills/ui-style-dense/mockup.html",
+        brutalist: "../../plugins/eisen-design/skills/ui-style-brutalist/mockup.html",
+        organic: "../../plugins/eisen-design/skills/ui-style-organic/mockup.html",
+      };
+      const WIDTHS = ["360", "768", "1280"];
+      const tabs = [...document.querySelectorAll('[role="tab"]')];
+      const widthButtons = [...document.querySelectorAll("[data-width]")];
+      const themeButton = document.getElementById("theme");
+      const stage = document.getElementById("stage");
+      const statusEl = document.getElementById("status");
+      const openLink = document.getElementById("open");
+      const root = document.documentElement;
+      const isHttp = /^https?:$/.test(location.protocol);
+
+      // Per-viewer conveniences only; every read and write is guarded.
+      const store = {
+        get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+        set(k, v) { try { localStorage.setItem(k, v); } catch { /* private window or blocked storage */ } },
+      };
+      const params = new URLSearchParams(location.search);
+      let style = SRC[params.get("style")] ? params.get("style") : SRC[store.get("style")] ? store.get("style") : "neutral";
+      let width = WIDTHS.includes(store.get("width")) ? store.get("width") : "1280";
+      let theme = store.get("theme") || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      if (store.get("theme")) root.dataset.theme = theme;
+
+      const nameOf = (s) => tabs.find((t) => t.dataset.style === s).textContent;
+      const frame = () => stage.querySelector("object");
+      const status = (msg) => { statusEl.textContent = msg; };
+
+      function placeholder(name, url) {
+        const div = document.createElement("div");
+        div.className = "placeholder";
+        div.innerHTML = "<strong></strong><span>Expected at <code></code></span>";
+        div.querySelector("strong").textContent = `${name}: mockup not built yet`;
+        div.querySelector("code").textContent = url;
+        return div;
+      }
+
+      // true/false over http(s); null under file://, where fetch cannot look (the <object> fallback covers that case).
+      async function exists(url) {
+        if (!isHttp) return null;
+        try { return (await fetch(url, { method: "HEAD", cache: "no-store" })).ok; } catch { return null; }
+      }
+
+      // Mockups honour data-theme on <html>. Same-origin (served over http) lets us set it directly; otherwise we
+      // post a message and pass ?theme= so a mockup that reads either can follow, and tell the viewer why not.
+      function pushTheme() {
+        const f = frame();
+        if (!f) return true;
+        try { f.contentWindow && f.contentWindow.postMessage({ type: "eisen-theme", theme }, "*"); } catch { /* ignore */ }
+        try {
+          const doc = f.contentDocument;
+          if (!doc || !doc.documentElement) return false;
+          doc.documentElement.dataset.theme = theme;
+          return true;
+        } catch { return false; }
+      }
+
+      function summary(reached) {
+        const hint = theme === "dark" && !reached
+          ? " — Dark cannot reach a file:// mockup; serve over HTTP or use the mockup's own Dark mode button" : "";
+        return `${nameOf(style)} · ${width} px · ${theme}${hint}`;
+      }
+
+      async function show() {
+        const url = SRC[style];
+        const name = nameOf(style);
+        tabs.forEach((t) => {
+          const on = t.dataset.style === style;
+          t.setAttribute("aria-selected", String(on));
+          t.tabIndex = on ? 0 : -1;
+        });
+        stage.setAttribute("aria-labelledby", `tab-${style}`);
+        openLink.href = url;
+        store.set("style", style);
+        try { history.replaceState(null, "", `?style=${style}`); } catch { /* file:// may refuse */ }
+        status(`Loading ${name}…`);
+        stage.replaceChildren();
+        if ((await exists(url)) === false) {
+          stage.append(placeholder(name, url));
+          status(`${name}: mockup not built yet`);
+          return;
+        }
+        const obj = document.createElement("object");
+        obj.className = "frame";
+        obj.type = "text/html";
+        obj.title = `${name} mockup`;
+        obj.style.width = `${width}px`;
+        obj.append(placeholder(name, url)); // the browser renders this when the file cannot be loaded
+        obj.addEventListener("load", () => status(summary(pushTheme())));
+        obj.addEventListener("error", () => status(`${name}: mockup not built yet`));
+        obj.data = `${url}?theme=${theme}`;
+        stage.append(obj);
+      }
+
+      tabs.forEach((tab, i) => {
+        tab.addEventListener("click", () => { style = tab.dataset.style; show(); });
+        tab.addEventListener("keydown", (e) => {
+          const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+          if (next === undefined) return;
+          e.preventDefault();
+          const target = tabs[(next + tabs.length) % tabs.length];
+          target.focus();
+          style = target.dataset.style;
+          show();
+        });
+      });
+
+      function setWidth(w) {
+        width = w;
+        store.set("width", w);
+        widthButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.width === w)));
+        const f = frame();
+        if (f) f.style.width = `${w}px`;
+        if (f) status(summary(true));
+      }
+      widthButtons.forEach((b) => b.addEventListener("click", () => setWidth(b.dataset.width)));
+
+      themeButton.addEventListener("click", () => {
+        theme = theme === "dark" ? "light" : "dark";
+        store.set("theme", theme);
+        root.dataset.theme = theme;
+        themeButton.setAttribute("aria-pressed", String(theme === "dark"));
+        const reached = pushTheme();
+        if (reached) status(summary(true));
+        else show(); // reload with ?theme= so a mockup that reads it can follow; the status explains the limit
+      });
+
+      themeButton.setAttribute("aria-pressed", String(theme === "dark"));
+      setWidth(width);
+      show();
+    })();
+  </script>
+</body>
+</html>

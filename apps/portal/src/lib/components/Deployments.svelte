@@ -26,7 +26,7 @@
 			<thead>
 				<tr>
 					<th scope="col">App</th>
-					<th scope="col">Version</th>
+					<th scope="col" class="num">Version</th>
 					<th scope="col">Commit</th>
 					<th scope="col">Deployed</th>
 					<th scope="col">Status</th>
@@ -35,13 +35,13 @@
 			<tbody>
 				{#each rows as row (row.id)}
 					<tr>
-						<td>{row.name}</td>
-						<td class="num">{row.version}</td>
-						<td>{#if row.sha}<code>{row.sha}</code>{:else}—{/if}</td>
-						<td>
+						<td data-label="App">{row.name}</td>
+						<td data-label="Version" class="num">{row.version}</td>
+						<td data-label="Commit">{#if row.sha}<code>{row.sha}</code>{:else}—{/if}</td>
+						<td data-label="Deployed">
 							{#if row.deployedAt}<time datetime={row.deployedAt}>{row.deployedLabel}</time>{:else}—{/if}
 						</td>
-						<td><span class="badge" data-kind={row.badge.kind}>{row.badge.label}</span></td>
+						<td data-label="Status"><span class="badge" data-kind={row.badge.kind}>{row.badge.label}</span></td>
 					</tr>
 				{/each}
 			</tbody>
@@ -54,9 +54,11 @@
 	</div>
 	{#if routingPending.length > 0}
 		<div class="alert" data-kind="warning" role="status">
-			<strong>{routingPending.join(', ')}:</strong>
-			routing is not ready, so {routingPending.length === 1 ? 'its tile opens' : 'their tiles open'} the Cloud
-			Run URL directly.
+			<span class="alert-body">
+				<strong>{routingPending.join(', ')}:</strong>
+				routing is not ready, so {routingPending.length === 1 ? 'its tile opens' : 'their tiles open'} the Cloud
+				Run URL directly.
+			</span>
 		</div>
 	{/if}
 </section>

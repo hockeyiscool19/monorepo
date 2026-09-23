@@ -1,0 +1,8 @@
+{
+  "name": "eisen-design",
+  "description": "Design foundation for eisensoftware apps: the design-token contract (neutral tokens.css + contrast checker), information architecture, WCAG 2.2 AA accessibility with an axe audit script, and swappable ui-style-* skills with mockups.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Jordan Eisenman"
+  }
+}

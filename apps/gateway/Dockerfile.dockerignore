@@ -1,0 +1,16 @@
+# BuildKit reads <Dockerfile>.dockerignore next to the Dockerfile; patterns are relative to the
+# build context (the repository root). Only registry/registry.json and apps/gateway/{src,scripts,
+# package*.json,tsconfig*.json} are copied, so everything heavy or unrelated stays out of the context.
+.git
+.github
+docs
+plugins
+apps/portal
+**/node_modules
+**/dist
+**/build
+**/.svelte-kit
+**/coverage
+**/*.log
+**/.env
+**/.env.*

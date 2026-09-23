@@ -36,7 +36,7 @@
 	</ul>
 
 	{#if shown.length === 0}
-		<div class="alert" data-kind="info">No apps match “{query.trim()}”.</div>
+		<div class="alert" data-kind="info"><span class="alert-body">No apps match “{query.trim()}”.</span></div>
 	{/if}
 </section>
 

@@ -1,0 +1,32 @@
+{
+  "name": "@eisensoftware/gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Registry-driven API gateway for eisensoftware.com: Node 20 + Hono + TypeScript in a hexagonal layout, packaged for Cloud Run.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "dist/main.js",
+  "scripts": {
+    "build:snapshot": "tsx scripts/build-snapshot.ts",
+    "build": "npm run build:snapshot && tsc -p tsconfig.build.json && cp src/adapters/outbound/registry/snapshot.json dist/adapters/outbound/registry/snapshot.json",
+    "dev": "npm run build:snapshot && tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "check:layers": "node scripts/check-layers.mjs",
+    "pretest": "npm run typecheck && npm run check:layers",
+    "test": "vitest run",
+    "check": "npm test"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.17",
+    "hono": "^4.13.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.43",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}
