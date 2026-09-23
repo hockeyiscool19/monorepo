@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Hero status line. Server-rendered with the registry's live count; on the client it probes the
-	// gateway once (3 s budget). Any failure degrades to "Status unavailable" — never an error state.
+	// gateway once (6 s budget: the gateway waits up to 3 s per cold upstream). Any failure degrades to "Status unavailable" — never an error state.
 	import { onMount } from 'svelte';
 
 	let { healthUrl, liveCount }: { healthUrl: string; liveCount: number } = $props();
@@ -17,8 +17,10 @@
 
 	onMount(async () => {
 		try {
-			const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(3000) : undefined;
-			const res = await fetch(healthUrl, { signal, headers: { accept: 'application/json' } });
+			const signal = typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(6000) : undefined;
+			// no-store: a status probe must never be answered from a cache (a browser that saw /api/health
+			// before the gateway existed would otherwise keep replaying that 404 for the cached lifetime).
+			const res = await fetch(healthUrl, { signal, cache: 'no-store', headers: { accept: 'application/json' } });
 			probe = res.ok ? 'ok' : 'unknown';
 		} catch {
 			probe = 'unknown';

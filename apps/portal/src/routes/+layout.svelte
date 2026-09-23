@@ -22,7 +22,9 @@
 	<nav class="site-nav" aria-label="Primary">
 		<a href="#apps" aria-current="page">Apps</a>
 		<a href={data.registryHref}>Registry</a>
-		<a href={data.statusHref}>Status</a>
+		<!-- rel="external" when it targets the gateway: /api/* is served by a Hosting rewrite, not by this app,
+		     so the prerender crawler must not follow it and the client router must not intercept it. -->
+		<a href={data.statusHref} rel={data.statusHref.startsWith('#') ? undefined : 'external'}>Status</a>
 	</nav>
 	<ThemeToggle />
 </header>

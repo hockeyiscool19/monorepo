@@ -22,7 +22,7 @@ Routing note: Next.js needs basePath '/vale' (Phase 4). Until then the tile link
 
 - Base `https://vale-382031913173.us-central1.run.app/api` · health `/grocery/health` → https://vale-382031913173.us-central1.run.app/api/grocery/health
 - Auth `cookie` — Browser-session auth: sign in through the browser first; with curl, reuse a saved cookie jar (`-b cookies.txt`). An unauthenticated call is redirected to sign-in or answered 401.
-- Gateway route `https://eisensoftware.com/api/vale/` will forward to the base above once `platform.gateway.enabled` is true (it is false today, so the route returns Hosting's 404).
+- Gateway route `https://eisensoftware.com/api/vale/` forwards to the base above with the prefix stripped; `https://eisensoftware.com/api/health` includes this app in its fan-out.
 - API description: `docs/v2/diet/openapi.yaml` in the app repository.
 
 ## Repository and deployment

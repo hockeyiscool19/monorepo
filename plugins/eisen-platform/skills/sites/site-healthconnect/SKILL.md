@@ -22,7 +22,7 @@ Routing note: Verified 2026-09-23 through the Hosting rewrite: HTML, /healthconn
 
 - Base `https://jordan-lifts-382031913173.us-central1.run.app/healthconnect` · health `/health` → https://jordan-lifts-382031913173.us-central1.run.app/healthconnect/health
 - Auth `cookie` — Browser-session auth: sign in through the browser first; with curl, reuse a saved cookie jar (`-b cookies.txt`). An unauthenticated call is redirected to sign-in or answered 401.
-- Gateway route `https://eisensoftware.com/api/healthconnect/` will forward to the base above once `platform.gateway.enabled` is true (it is false today, so the route returns Hosting's 404).
+- Gateway route `https://eisensoftware.com/api/healthconnect/` forwards to the base above with the prefix stripped; `https://eisensoftware.com/api/health` includes this app in its fan-out.
 
 ## Repository and deployment
 
