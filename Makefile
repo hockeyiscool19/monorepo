@@ -1,4 +1,4 @@
-.PHONY: check registry-validate portal-build portal-dev render-firebase gateway-test
+.PHONY: check registry-validate portal-build portal-dev render-firebase gallery gateway-test
 
 ## check: every gate that exists (CI runs this)
 check: registry-validate
@@ -20,6 +20,10 @@ portal-dev:
 ## render-firebase: regenerate the rewrites block of firebase.json from the registry (idempotent)
 render-firebase:
 	node scripts/render-firebase.mjs
+
+## gallery: serve the repo root; the style gallery is http://127.0.0.1:4178/docs/mockups/
+gallery:
+	python3 -m http.server 4178 --bind 127.0.0.1
 
 ## gateway-test: unit tests for apps/gateway
 gateway-test:
