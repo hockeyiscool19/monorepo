@@ -1,0 +1,192 @@
+/* ui-style-organic — tokens.css
+   Implements design-token contract 1.1 (plugins/eisen-design/skills/design-tokens/SKILL.md).
+   Warm, calm, tactile: linen surfaces, moss accent, clay warnings, ink-green text.
+   Dark mode is a deep moss-charcoal, never pure black.
+   Private tokens are prefixed --x- and may only be read by this style's own components.css. */
+
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Nunito+Sans:wght@400;600;700&display=swap");
+
+:root {
+  color-scheme: light;
+
+  /* color: surfaces — linen ground, warm paper cards */
+  --color-bg: #f3efe6;
+  --color-bg-elevated: #faf8f2;
+  --color-surface: #fcfaf5;
+  --color-surface-hover: #f5f1e8;
+  --color-border: #e2dccd;
+  --color-border-strong: #857f6f;
+
+  /* color: text — ink green, never pure black */
+  --color-text: #1e2a23;
+  --color-text-muted: #56635a;
+  --color-text-inverse: #f7f4ec;
+
+  /* color: accent — moss, with linen on top */
+  --color-accent: #4d6e52;
+  --color-accent-hover: #3f5d45;
+  --color-on-accent: #f7f4ec;
+  --color-accent-soft: #dde7d8;
+  --color-on-accent-soft: #2f4f38;
+
+  /* color: semantic — leaf, clay, brick, lake */
+  --color-success: #2f6b40;
+  --color-warning: #9a4f2a;
+  --color-danger: #a03a32;
+  --color-info: #2f6774;
+  --color-focus: #4d6e52;
+
+  /* color: tints — pale fills for badges and alerts; ink text sits on them */
+  --color-success-soft: #d9e9da;
+  --color-warning-soft: #f4e1d0;
+  --color-danger-soft: #f3d9d5;
+  --color-info-soft: #d6e6ea;
+
+  /* type — rounded humanist display, readable humanist body */
+  --font-sans: "Nunito Sans", "Segoe UI", -apple-system, system-ui, Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-display: "Nunito", "Nunito Sans", "Segoe UI", -apple-system, system-ui, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.5rem;
+  --leading-tight: 1.15;
+  --leading-normal: 1.6;
+  --weight-regular: 400;
+  --weight-medium: 600;
+  --weight-bold: 700;
+
+  /* space: 4-pt grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* shape — large and soft; xl is the pillow radius for hero and tiles, pills for controls */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* controls — touch-first height for buttons, inputs, nav pills and table rows */
+  --control-height: 44px;
+
+  /* elevation — layered, low-opacity, tinted with the ink colour so it reads warm */
+  --shadow-sm: 0 1px 2px rgb(30 42 35 / 0.05), 0 2px 6px rgb(30 42 35 / 0.04);
+  --shadow-md: 0 2px 4px rgb(30 42 35 / 0.05), 0 8px 20px rgb(30 42 35 / 0.07);
+  --shadow-lg: 0 4px 8px rgb(30 42 35 / 0.05), 0 18px 44px rgb(30 42 35 / 0.10);
+
+  /* motion — slow and settling; nothing snaps */
+  --duration-fast: 140ms;
+  --duration-base: 240ms;
+  --duration-slow: 420ms;
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-emphasized: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* layout */
+  --content-max: 1120px;
+  --gutter: 20px;
+
+  /* private: gentle surface gradients (morning light on the hero, top-lit cards) */
+  --x-hero-gradient: linear-gradient(135deg, #e4ecdc 0%, #f2ebd8 55%, #f9f0e1 100%);
+  --x-tile-gradient: linear-gradient(180deg, #fefdfa 0%, #fbf8f1 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #161c18;
+    --color-bg-elevated: #1e2620;
+    --color-surface: #1e2620;
+    --color-surface-hover: #262f28;
+    --color-border: #2e3a31;
+    --color-border-strong: #6b7a6f;
+    --color-text: #ebe7dc;
+    --color-text-muted: #a9b3a8;
+    --color-text-inverse: #161c18;
+    --color-accent: #9fbf9f;
+    --color-accent-hover: #b3cfb3;
+    --color-on-accent: #14211a;
+    --color-accent-soft: #2a3d2e;
+    --color-on-accent-soft: #cfe3cf;
+    --color-success: #8cc79a;
+    --color-warning: #e3a374;
+    --color-danger: #ea948c;
+    --color-info: #8bc3cf;
+    --color-focus: #b9d6b9;
+    --color-success-soft: #264633;
+    --color-warning-soft: #4a3524;
+    --color-danger-soft: #4c2e2a;
+    --color-info-soft: #24414a;
+    --radius-xl: 28px;
+    --control-height: 44px;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.30), 0 2px 6px rgb(0 0 0 / 0.22);
+    --shadow-md: 0 2px 4px rgb(0 0 0 / 0.30), 0 8px 20px rgb(0 0 0 / 0.34);
+    --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.32), 0 18px 44px rgb(0 0 0 / 0.42);
+    --x-hero-gradient: linear-gradient(135deg, #1c2a20 0%, #22301f 55%, #2b2b1f 100%);
+    --x-tile-gradient: linear-gradient(180deg, #222b24 0%, #1c241e 100%);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #161c18;
+  --color-bg-elevated: #1e2620;
+  --color-surface: #1e2620;
+  --color-surface-hover: #262f28;
+  --color-border: #2e3a31;
+  --color-border-strong: #6b7a6f;
+  --color-text: #ebe7dc;
+  --color-text-muted: #a9b3a8;
+  --color-text-inverse: #161c18;
+  --color-accent: #9fbf9f;
+  --color-accent-hover: #b3cfb3;
+  --color-on-accent: #14211a;
+  --color-accent-soft: #2a3d2e;
+  --color-on-accent-soft: #cfe3cf;
+  --color-success: #8cc79a;
+  --color-warning: #e3a374;
+  --color-danger: #ea948c;
+  --color-info: #8bc3cf;
+  --color-focus: #b9d6b9;
+  --color-success-soft: #264633;
+  --color-warning-soft: #4a3524;
+  --color-danger-soft: #4c2e2a;
+  --color-info-soft: #24414a;
+  --radius-xl: 28px;
+  --control-height: 44px;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.30), 0 2px 6px rgb(0 0 0 / 0.22);
+  --shadow-md: 0 2px 4px rgb(0 0 0 / 0.30), 0 8px 20px rgb(0 0 0 / 0.34);
+  --shadow-lg: 0 4px 8px rgb(0 0 0 / 0.32), 0 18px 44px rgb(0 0 0 / 0.42);
+  --x-hero-gradient: linear-gradient(135deg, #1c2a20 0%, #22301f 55%, #2b2b1f 100%);
+  --x-tile-gradient: linear-gradient(180deg, #222b24 0%, #1c241e 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
