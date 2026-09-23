@@ -1,76 +1,111 @@
-# apps/portal — the eisensoftware tiles
+# apps/portal — Eisenhold, the eisensoftware front door
 
-SvelteKit (Svelte 5, TypeScript, `adapter-static`, plain CSS, no Tailwind). At build time it reads
-`registry/registry.json` once and renders one tile per app, a deployments table, and the published
-`/registry.json`. There is no server: `build/` is what Firebase Hosting serves at `eisensoftware.com/`.
+SvelteKit (Svelte 5, TypeScript, `adapter-static`, plain CSS) plus three.js. At build time it reads
+`registry/registry.json` once and renders:
+
+- **`/` — Eisenhold**, a walkable, Skyrim-like hold under the aurora: one rune gate per app in the registry, a square
+  with a Word Wall of running versions, a hold guard, a dragon on the wind, and **My Get-a-way** — a small, grainy
+  cabin with Colorado outside the window, a drawing board and a cork board of project stickies that evolve when done.
+- **`/apps`** — the classic tiles and deployments table: the plain, accessible list view of the same registry.
+- **`/registry.json`** — the published registry (no `repo` blocks).
+
+There is no server: `build/` is what Firebase Hosting serves at `eisensoftware.com/`. Vale's protection is **not** in
+this app — it is the gateway's door (`apps/gateway`, `docs/runbooks/platform-auth.md`); the world only shows it.
 
 ## Commands
 
 | What | Command |
 |---|---|
 | Install (this package owns its own lockfile) | `cd apps/portal && npm ci` |
-| Develop | `make portal-dev` (or `npm run dev` here) → http://localhost:5173 |
-| Build | `make portal-build` → `build/index.html`, `build/registry.json`, `build/_app/**` |
-| Type-check | `npm run check` (svelte-check) |
-| Preview the build | `npm run preview` |
-| Try a style without editing | `PORTAL_STYLE=ui-style-editorial npm run build` |
+| Develop, local realm (every gate and room open) | `make portal-dev` → http://localhost:5173 |
+| Rehearse production locally (emulators + gateway door) | `make realm-rehearsal` → http://localhost:5174 |
+| Build | `make portal-build` → `build/index.html`, `build/apps.html`, `build/registry.json`, `build/_app/**` |
+| Unit tests (realm, access, board, collisions) | `make portal-test` (`npm test` here) |
+| Type-check | `npm run check` (svelte-check, 0 errors and 0 warnings) |
+| Preview the build | `npm run preview` (same proxies as dev) |
+| Try another style | `PORTAL_STYLE=ui-style-editorial npm run build` |
 
-Requires Node `^20.19 || ^22.12 || >=24` (Vite 8). CI installs Node 20.x, which satisfies this.
+Requires Node `^20.19 || ^22.12 || >=24` (Vite 8). CI installs Node 20.x.
 
-## How the page is rendered
+## Realm modes: open locally, guarded everywhere else
 
-- `src/lib/server/registry.ts` imports `registry/registry.json` (the only source of app URLs, paths,
-  versions and statuses) and turns it into view models: `visibleApps()` drops `hidden`, sorts live → beta →
-  planned, then by name; `tileHref()` links to `path` once `routing.ready`, otherwise to `web.url`; planned
-  apps get no link and no version. It lives under `$lib/server`, so the raw registry is never shipped to the client.
-- `src/routes/+page.server.ts` runs once at build time (the root layout sets `prerender = true`) and bakes the
-  result into `index.html`. `src/routes/registry.json/+server.ts` is prerendered too: the registry object plus
-  `generatedAt`. Validate it with `node scripts/validate-registry.mjs apps/portal/build/registry.json`.
-- The markup follows `plugins/eisen-design/mockups/reference.html` class for class (skip-link, `site-header`,
-  `hero`, `section-head` + `filter`, `ul.tiles > li.tile[data-status] > .tile-link`, `badge[data-kind]`,
-  `table`, `actions`/`btn-*`, `alert`, `site-footer`). Two additions: `div.table-wrap` (a labelled scroll region
-  around the table for phone widths) and a visually-hidden `role="status"` line that announces filter results.
-  One omission: the reference puts `aria-disabled` on the planned `<li>`, which ARIA 1.2 does not allow on a list
-  item; the portal relies on `data-status="planned"` and a non-link `.tile-link` instead. One behavioural
-  difference: the theme toggle keeps the label "Dark mode" and reports state through `aria-pressed` (the reference
-  script flips the label), so assistive tech hears one stable control.
-- Client-side behaviour is progressive enhancement: the filter input narrows tiles by name/description, the
-  theme toggle sets `data-theme` on `<html>` and persists it in `localStorage` (try/catch, with a pre-paint
-  script in `app.html`), and the hero probes `<gateway.path>/health` with a 3 s timeout — "Gateway healthy · N
-  apps live" on 200, "Status unavailable" otherwise. Without JS you get the full list and the registry's live count.
-- Nav: "Registry" → `/registry.json`; "Status" → `/api/health` when `platform.gateway.enabled`, else the
-  deployments table, so the nav never holds a dead link.
+`src/lib/world/domain/mode.ts` decides once per page load:
 
-## Switch style
+| Mode | When | Warded gates (Vale) and My Get-a-way | Board storage |
+|---|---|---|---|
+| `open` | `vite dev`, or the page is on `localhost` / `127.0.0.1` / `*.localhost` | open to everyone, no sign-in | this browser's `localStorage` |
+| `guarded` | any other host (eisensoftware.com, eisensoftware.web.app), or `?realm=guarded` / `PUBLIC_REALM=guarded` | need sign-in and a guild (`platform.auth.groups`) | Firestore `boards/getaway/cards/*`, owner only |
 
-Styling is two files loaded by `src/routes/+layout.svelte`: `$style/tokens.css` (the design-token contract) and
-`$style/components.css` (component rules that read only those tokens). Both are aliases resolved in
-`vite.config.ts` by **one line**:
+`?realm=open` cannot open a real domain. In open mode, `vite dev` and `vite preview` proxy every app path to that app's
+own Cloud Run URL (and `/api` to the published gateway), so walking into a gate on localhost opens the real app:
 
-```ts
-const STYLE = process.env.PORTAL_STYLE || 'design-tokens';
+| Variable (shell or `apps/portal/.env.local`) | Effect |
+|---|---|
+| `REALM_DOOR_URL=http://127.0.0.1:8787` | warded apps and `/api` go through a local gateway (what the rehearsal sets) |
+| `REALM_GATEWAY_URL=<url>` | where `/api` goes (default `https://<hosting site>.web.app`) |
+| `REALM_UPSTREAM_ID_TOKEN=$(gcloud auth print-identity-token)` | for apps whose Cloud Run service is private (after the runbook's step h) |
+
+## Sign-in and the group profile
+
+- Firebase Authentication in the registry's `platform.auth.projectId` (Google, or email and password; registering is open,
+  guilds are not). The web config comes from `PUBLIC_FIREBASE_API_KEY` + `PUBLIC_FIREBASE_APP_ID` at build time, else from
+  Firebase Hosting's `/__/firebase/init.json` on the real domains; `PUBLIC_FIREBASE_AUTH_EMULATOR_HOST` and
+  `PUBLIC_FIRESTORE_EMULATOR_HOST` point at the emulators. No config → sign-in unavailable, warded gates stay sealed.
+- Guilds are the ID token's custom claim `groups`, granted only with `scripts/grant-groups.mjs`. The journal shows your
+  profile (name, email, provider, registration date, guilds, what they open), every guild's profile, a refresh button
+  that re-reads your claims, and sign-out (which also closes every door session).
+- Walking into a warded gate posts a fresh ID token to `<app.path>/__door/session`; the gateway checks it and sets an
+  HttpOnly door cookie scoped to the app's path; then the page navigates. A door that refuses you sends you back to
+  `/?gate=<id>&reason=…`, which puts you in front of that gate with the reason and a sign-in button.
+
+## My Get-a-way and the drawing board
+
+- The drawing board files a Jira-lite card: summary, type (idea · feature · fix · chore), priority (lowest … highest),
+  column (Ideas → To Do → In Progress → Done), labels and notes; keys run `GET-1`, `GET-2`, … It becomes a sticky note —
+  on the 3D cork board (canvas-painted handwriting, pinned under its column) and in the cork board dialog, where notes
+  move by buttons or drag and drop.
+- Moving a card into Done plays the **evolution**: "What? GET-3 is evolving!", silhouettes trading places (never more
+  than three times a second, no flashes), a gold burst, "…evolved into RELEASE!", a fanfare and EXP (level n needs n³,
+  the handheld games' medium-fast curve). Reduced motion skips straight to the result.
+- The quest log (journal → Quests) reads the same board as quests, with your level.
+
+## Layout (ports and adapters)
+
+```
+src/routes/+page.svelte, +page.server.ts        the world (build-time realm data from $lib/server/realm.ts)
+src/routes/(classic)/+layout.svelte, apps/        the classic chrome and the /apps tiles page
+src/routes/registry.json/+server.ts               prerendered /registry.json
+src/lib/world/domain/        pure: realm layout and compass math, access rules, realm mode, the board and EXP, collisions, lore
+src/lib/world/application/   ports (AuthPort, DoorPort, BoardStore, Navigator) and use cases (enter a gate, file/move a card)
+src/lib/world/adapters/      Firebase config + Auth, the HTTP door, localStorage and Firestore board stores
+src/lib/world/engine/        three.js: Engine (loop, post-processing), player, input, audio, particles, shaders,
+                             palette.ts, textures/, overworld/ (terrain, sky, flora, gates, square, cabin, creatures),
+                             getaway/ (room, Colorado, cork and drafting boards)
+src/lib/world/ui/            World.svelte, controller.ts (the composition root), state.svelte.ts, HUD and every dialog
+tests/world/                 vitest for domain/ (and a Firestore test that runs only when the emulators are up)
 ```
 
-- `design-tokens` (default): the neutral `plugins/eisen-design/skills/design-tokens/tokens.css` plus this
-  app's own `src/styles/components.css` (an entry that `@import`s `base.css`, `apps.css` and `deployments.css`,
-  split by component family to respect the 400-line cap; Vite inlines the imports into one stylesheet).
-- Any `ui-style-<name>`: that skill's `tokens.css` **and** `components.css`, e.g. set the default to
-  `'ui-style-editorial'`, or for a one-off build run `PORTAL_STYLE=ui-style-editorial npm run build`.
+The engine never decides access: the controller tells it how each gate looks (open, sealed, dormant, unstable), and a
+sealed gate's ward is a collider as well as a picture. Every ward starts closed.
 
-The markup never changes, so a restyle is a config change plus a build. Components must keep reading tokens
-only; `grep -rnE "#[0-9a-fA-F]{3,8}\b|rgb\(|hsl\(" src` should stay empty.
+## Style and colour rules
 
-## Layout
+- The portal adopts **`ui-style-nordic`** (parchment journal in light mode, night HUD in dark mode). The one-line
+  switch is still `STYLE` in `vite.config.ts`; `PORTAL_STYLE=design-tokens` returns to the neutral set.
+- UI components read design tokens only. `grep -rnE "#[0-9a-fA-F]{3,8}\b|rgb\(|hsl\(" src --include=*.svelte
+  --include=*.css` stays empty.
+- Scene colours (materials, lights, fog, canvas textures) live in `src/lib/world/engine/palette.ts` only — the WebGL
+  counterpart of `tokens.css`. Engine code derives shades from palette values; white and black appear only as masks.
 
-```
-src/app.html                          shell + pre-paint theme script
-src/routes/+layout.server.ts          prerender = true; nav/footer data from the registry's platform block
-src/routes/+layout.svelte             style imports, skip-link, header, main, footer
-src/routes/+page.server.ts            build-time view model (tiles, deployments, gateway URLs)
-src/routes/+page.svelte               hero + AppsSection + Deployments
-src/routes/registry.json/+server.ts   prerendered /registry.json
-src/lib/server/registry.ts            registry types, sorting and view models
-src/lib/site.ts                       portal constants (title, owner, source and docs URLs)
-src/lib/components/*.svelte           ThemeToggle, GatewayStatus, Tile, AppsSection, Deployments
-src/styles/components.css             neutral style entry: @imports base.css, apps.css, deployments.css (tokens only)
-```
+## Accessibility
+
+- The world surface is a focusable `role="application"` region that takes W A S D, arrows, Shift, Space, E, M, J and
+  Escape only while focused (WCAG 2.1.4). A skip link jumps to a server-rendered directory of every gate (also the no-JS
+  fallback), and the Map lists every gate and landmark with Travel and Enter buttons — the whole realm without walking.
+- Every menu is a native modal `<dialog>` (focus trapped, Escape closes, focus returns to the world); tabs follow the
+  ARIA pattern; forms have visible labels, autocomplete and field errors that say how to fix them; the cork board moves
+  notes by buttons, not only by dragging (2.5.7).
+- Motion: `prefers-reduced-motion` or Settings → Motion → Reduced freezes flames, snow, aurora and the evolution; the
+  title's animation ends within five seconds (2.2.2).
+- Checked with axe-core (WCAG 2.2 AA tags) on `/apps`, the title, the HUD, every dialog and the evolution, in light and
+  dark themes: 0 violations.

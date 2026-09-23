@@ -23,15 +23,35 @@ export interface AppManifest {
 		altUrl?: string;
 	};
 	api?: { baseUrl: string; healthPath: string; docs?: string; auth?: string };
+	/** Present when the app is served through the gateway door: sign-in plus one of these groups ([] = any signed-in user). */
+	access?: { groups: string[]; note?: string };
 	repo: { github: string; branch: string; localPath?: string };
 	deployment: { version: string; sha: string; imageTag: string; deployedAt: string; deployedBy: 'manual' | 'ci' };
 	tags?: string[];
+}
+
+/** One group profile: what a member of the custom-claim group `id` is called and why the group exists. */
+export interface GroupProfile {
+	id: string;
+	name: string;
+	emblem: string;
+	description: string;
+}
+
+export interface PlatformAuth {
+	enabled: boolean;
+	provider: 'firebase';
+	projectId: string;
+	sessionHours: number;
+	note?: string;
+	groups: GroupProfile[];
 }
 
 export interface Platform {
 	domain: string;
 	hosting: { project: string; site: string };
 	gateway: { enabled: boolean; path: string; service: string; region: string; note?: string };
+	auth?: PlatformAuth;
 }
 
 export interface Registry {

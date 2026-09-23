@@ -4,14 +4,56 @@
     {
       "name": "mockups",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "4178", "--bind", "127.0.0.1"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4178",
+        "--bind",
+        "127.0.0.1"
+      ],
       "port": 4178
     },
     {
       "name": "portal",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "apps/portal", "run", "dev", "--", "--port", "5173", "--strictPort"],
+      "runtimeArgs": [
+        "--prefix",
+        "apps/portal",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5173",
+        "--strictPort"
+      ],
       "port": 5173
+    },
+    {
+      "name": "rehearsal-emulators",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "scripts/realm-rehearsal.sh",
+        "emulators"
+      ],
+      "port": 9099
+    },
+    {
+      "name": "rehearsal-gateway",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "scripts/realm-rehearsal.sh",
+        "gateway"
+      ],
+      "port": 8787
+    },
+    {
+      "name": "rehearsal-portal",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "scripts/realm-rehearsal.sh",
+        "portal"
+      ],
+      "port": 5174
     }
   ]
 }
