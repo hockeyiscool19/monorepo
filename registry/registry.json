@@ -88,10 +88,10 @@
         "localPath": "~/projects/healthconnect"
       },
       "deployment": {
-        "version": "0.0.0+sha.9342e6cec23b",
-        "sha": "9342e6cec23bab242048b3e54a7da1e1c89ed9d2",
+        "version": "0.0.0+sha.17e7f54b4cb4",
+        "sha": "17e7f54b4cb4e7818c89458f02ecd680ee362c8a",
         "imageTag": "",
-        "deployedAt": "2026-09-23T15:52:54Z",
+        "deployedAt": "2026-09-23T16:25:32Z",
         "deployedBy": "ci"
       },
       "tags": [
