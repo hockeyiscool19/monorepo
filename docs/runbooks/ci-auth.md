@@ -53,6 +53,14 @@ After `auth`, `gcloud`, `docker push` to Artifact Registry (after `gcloud auth c
 and `npx firebase-tools deploy` all work with the federated credentials (firebase-tools reads
 `GOOGLE_APPLICATION_CREDENTIALS`, which the auth action exports).
 
+## Platform sign-in (Phase 8)
+
+While `platform.auth.enabled`, `deploy.yml` checks that Secret Manager secret `gateway-session-secret` exists before it
+deploys the gateway, so the service account needs `roles/secretmanager.viewer` on that one secret (metadata only, never
+the value); the secret's value is read by the gateway's runtime account, not by CI. Both bindings are made in
+`docs/runbooks/platform-auth.md`, step c. The optional repository variables `FIREBASE_WEB_API_KEY` and
+`FIREBASE_WEB_APP_ID` (step b there) are not secrets either.
+
 ## The one real secret: cross-repo dispatch
 
 App repos tell the monorepo about a deploy with `repository_dispatch`. That call needs a token that can write to

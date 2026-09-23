@@ -3,17 +3,25 @@
 //
 //   node scripts/render-firebase.mjs          rewrite firebase.json in place (idempotent: a second run changes nothing)
 //   node scripts/render-firebase.mjs --check  exit 1 and print what would change if firebase.json is stale
+//   options (tests, dry runs): --registry <path> (default registry/registry.json) · --firebase <path> (default firebase.json)
 //
 // Rewrites emitted, in this order:
 //   1. `<platform.gateway.path>{,/**}` → Cloud Run <platform.gateway.service>, only while platform.gateway.enabled is true
-//   2. `<app.path>{,/**}` → Cloud Run <app.web.service>, one per app whose web.kind is "cloud-run", sorted by path.
-//      Every status is routed, `hidden` included (hidden apps are not shown, but they are still served).
-// Every other key of firebase.json is preserved in place; the file is re-serialized as 2-space JSON with a trailing newline.
+//   2. `<app.path>{,/**}`, one per app whose web.kind is "cloud-run", sorted by path. Every status is routed, `hidden`
+//      included (hidden apps are not shown, but they are still served). The target is
+//        - Cloud Run <platform.gateway.service> — the gateway door — for an app with an `access` block while
+//          platform.auth.enabled and platform.gateway.enabled are both true: the door checks sign-in and groups, then
+//          forwards to the app (docs/runbooks/platform-auth.md);
+//        - Cloud Run <app.web.service> otherwise, as for every public app. An app with `access` routed this way is
+//          unguarded, so the CLI prints a warning for it.
+// Every other key of firebase.json (headers, firestore, emulators, …) is preserved in place; the file is re-serialized as
+// 2-space JSON with a trailing newline. The summary names the paths that go through the door.
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { invokedDirectly } from "./lib/entry.mjs";
+import { doorActive, doorOffReason, unguardedApps } from "./lib/auth-rules.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const FIREBASE_PATH = join(root, "firebase.json");
@@ -22,7 +30,14 @@ const REGISTRY_PATH = join(root, "registry", "registry.json");
 const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const isString = (v) => typeof v === "string" && v.length > 0;
 const byPath = (a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
-const runRewrite = (path, serviceId, region) => ({ source: `${path}{,/**}`, run: { serviceId, region } });
+const sourceOf = (path) => `${path}{,/**}`;
+const runRewrite = (path, serviceId, region) => ({ source: sourceOf(path), run: { serviceId, region } });
+
+/** Cloud Run apps Hosting sends through the gateway door: those with `access`, while sign-in and the gateway are on. */
+export function doorApps(registry) {
+  if (!isObject(registry) || !Array.isArray(registry.apps) || !doorActive(registry.platform)) return [];
+  return registry.apps.filter((app) => isObject(app) && isObject(app.access) && isObject(app.web) && app.web.kind === "cloud-run");
+}
 
 /** The rewrites the registry implies, in their final order. Throws on a manifest that cannot be routed. */
 export function renderRewrites(registry) {
@@ -43,7 +58,9 @@ export function renderRewrites(registry) {
     for (const key of ["service", "region"])
       if (!isString(app.web[key])) throw new Error(`app ${JSON.stringify(app.id)}: web.${key} is required for cloud-run apps`);
   }
-  for (const app of [...routed].sort(byPath)) rewrites.push(runRewrite(app.path, app.web.service, app.web.region));
+  const door = new Set(doorApps(registry));
+  for (const app of [...routed].sort(byPath))
+    rewrites.push(door.has(app) ? runRewrite(app.path, gateway.service, gateway.region) : runRewrite(app.path, app.web.service, app.web.region));
   return rewrites;
 }
 
@@ -67,11 +84,20 @@ export function render(firebaseText, registry) {
   return `${JSON.stringify(config, null, 2)}\n`;
 }
 
-const describe = (r) =>
-  r.run ? `run ${r.run.serviceId} (${r.run.region})` : r.destination ? `→ ${r.destination}` : r.function ? `function ${r.function}` : JSON.stringify(r);
+/** One rewrite in words. An app path served by the gateway's service is marked as the door. */
+function describer(registry) {
+  const gateway = isObject(registry.platform?.gateway) ? registry.platform.gateway : {};
+  const gatewaySource = isString(gateway.path) ? sourceOf(gateway.path) : undefined;
+  return (r) => {
+    if (!r.run) return r.destination ? `→ ${r.destination}` : r.function ? `function ${r.function}` : JSON.stringify(r);
+    const door = r.run.serviceId === gateway.service && r.source !== gatewaySource ? " — gateway door" : "";
+    return `run ${r.run.serviceId} (${r.run.region})${door}`;
+  };
+}
 
 /** Human-readable lines describing how the rewrites (and formatting) would change. */
 export function summarize(beforeText, afterText, registry) {
+  const describe = describer(registry);
   const before = JSON.parse(beforeText);
   const oldRewrites = hostingBlock(before, registry).rewrites ?? [];
   const newRewrites = hostingBlock(JSON.parse(afterText), registry).rewrites;
@@ -91,27 +117,47 @@ export function summarize(beforeText, afterText, registry) {
   return lines;
 }
 
-function main(argv) {
-  const check = argv.includes("--check");
-  const registry = JSON.parse(readFileSync(REGISTRY_PATH, "utf8"));
-  const before = readFileSync(FIREBASE_PATH, "utf8");
+/** "4 rewrites; through the gateway door: /vale" */
+export function countLine(count, registry) {
+  const door = doorApps(registry).map((app) => app.path).sort();
+  return `${count} rewrite${count === 1 ? "" : "s"}${door.length ? `; through the gateway door: ${door.join(", ")}` : ""}`;
+}
+
+function parseArgs(argv) {
+  const opts = { check: false, registry: REGISTRY_PATH, firebase: FIREBASE_PATH };
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--check") opts.check = true;
+    else if ((arg === "--registry" || arg === "--firebase") && i + 1 < argv.length) opts[arg.slice(2)] = argv[++i];
+    else throw new Error(arg === "--registry" || arg === "--firebase" ? `${arg} needs a value` : `unknown argument ${arg}`);
+  }
+  return opts;
+}
+
+/** CLI entry point. Returns the exit code; `log` / `warn` receive the output lines (tests capture them). */
+export function main(argv, { log = console.log, warn = console.error } = {}) {
+  const opts = parseArgs(argv);
+  const registry = JSON.parse(readFileSync(opts.registry, "utf8"));
+  const before = readFileSync(opts.firebase, "utf8");
   const after = render(before, registry);
   const count = hostingBlock(JSON.parse(after), registry).rewrites.length;
-  const file = relative(process.cwd(), FIREBASE_PATH) || "firebase.json";
+  const file = relative(process.cwd(), opts.firebase) || "firebase.json";
+  for (const app of unguardedApps(registry))
+    warn(`render-firebase: warning — ${app.id} declares access but ${doorOffReason(registry.platform)}: ${sourceOf(app.path)} goes straight to Cloud Run ${app.web.service}, unguarded`);
 
   if (before === after) {
-    console.log(`${file}: up to date (${count} rewrite${count === 1 ? "" : "s"})`);
+    log(`${file}: up to date (${countLine(count, registry)})`);
     return 0;
   }
   const lines = summarize(before, after, registry);
-  if (check) {
-    console.error(`${file}: stale — run \`node scripts/render-firebase.mjs\` and commit the result`);
-    for (const line of lines) console.error(line);
+  if (opts.check) {
+    warn(`${file}: stale — run \`node scripts/render-firebase.mjs\` and commit the result (${countLine(count, registry)})`);
+    for (const line of lines) warn(line);
     return 1;
   }
-  writeFileSync(FIREBASE_PATH, after);
-  console.log(`${file}: rewrites rendered (${count} rewrite${count === 1 ? "" : "s"})`);
-  for (const line of lines) console.log(line);
+  writeFileSync(opts.firebase, after);
+  log(`${file}: rewrites rendered (${countLine(count, registry)})`);
+  for (const line of lines) log(line);
   return 0;
 }
 

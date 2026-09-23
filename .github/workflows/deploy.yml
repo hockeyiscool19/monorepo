@@ -7,14 +7,23 @@
 # Auth is keyless (Workload Identity Federation) through four repository VARIABLES (docs/runbooks/ci-auth.md):
 #   GCP_PROJECT · GCP_REGION · GCP_WORKLOAD_IDENTITY_PROVIDER · GCP_SERVICE_ACCOUNT
 #
+# Optional repository VARIABLES (not secrets; a Firebase web API key only names the project):
+#   FIREBASE_WEB_API_KEY · FIREBASE_WEB_APP_ID → the portal build as PUBLIC_FIREBASE_API_KEY / PUBLIC_FIREBASE_APP_ID.
+#   Unset, the portal reads its Firebase config from Hosting's /__/firebase/init.json (docs/runbooks/platform-auth.md, b).
+#
 # Jobs
-#   plan            resolve commit, version and platform.gateway.{enabled,service,path} from the registry
+#   plan            resolve commit, version, platform.gateway.{enabled,service,path} and platform.auth.enabled
 #   gateway-image   docker build from the repo root → us-central1-docker.pkg.dev/<project>/platform/gateway
 #                   tags: sha-<12> always, `main` on branch pushes, v<semver> on tag builds; never :latest
-#   gateway-deploy  gcloud run deploy <service> --image …:sha-<12>   (both gateway jobs are skipped while
-#                   platform.gateway.enabled is false, so the pipeline works before the gateway exists)
+#   gateway-deploy  while platform.auth.enabled: fail unless Secret Manager secret `gateway-session-secret` exists with
+#                   an enabled version (docs/runbooks/platform-auth.md, step c); then
+#                   gcloud run deploy <service> --image …:sha-<12> [--update-secrets SESSION_SECRET=gateway-session-secret:latest]
+#                   and smoke-test <path>/health (X-Gateway-Version) [+ <path>/auth/me → 401 without a token].
+#                   Both gateway jobs are skipped while platform.gateway.enabled is false, so the pipeline works before
+#                   the gateway exists.
 #   hosting         make portal-build → render-firebase --check → firebase deploy --only hosting
-#                   (after the gateway, so an /api rewrite never points at a service that is not there yet)
+#                   (after the gateway, so an /api rewrite or an app behind the gateway door never points at a
+#                   service that is not there yet). Firestore rules are not deployed here (runbook, step d).
 # <version> is the tag without its `v` on tag builds, else 0.0.0+sha.<12>.
 name: Deploy platform
 
@@ -59,6 +68,7 @@ jobs:
       gateway_enabled: ${{ steps.resolve.outputs.gateway_enabled }}
       gateway_service: ${{ steps.resolve.outputs.gateway_service }}
       gateway_path: ${{ steps.resolve.outputs.gateway_path }}
+      auth_enabled: ${{ steps.resolve.outputs.auth_enabled }}
       site: ${{ steps.resolve.outputs.site }}
     steps:
       - name: Require the WIF repository variables
@@ -80,7 +90,7 @@ jobs:
           node-version: 20
       - name: Validate the registry
         run: node scripts/validate-registry.mjs
-      - name: Resolve commit, version and gateway settings
+      - name: Resolve commit, version, gateway and sign-in settings
         id: resolve
         env:
           INPUT_REF: ${{ inputs.ref }}
@@ -113,6 +123,7 @@ jobs:
             echo "gateway_enabled=$(registry 'r.platform.gateway.enabled === true')"
             echo "gateway_service=$(registry 'r.platform.gateway.service')"
             echo "gateway_path=$(registry 'r.platform.gateway.path')"
+            echo "auth_enabled=$(registry 'r.platform.auth?.enabled === true')"
             echo "site=$(registry 'r.platform.hosting.site')"
           } | tee -a "$GITHUB_OUTPUT"
 
@@ -163,6 +174,9 @@ jobs:
     timeout-minutes: 15
     env:
       SERVICE: ${{ needs.plan.outputs.gateway_service }}
+      AUTH_ENABLED: ${{ needs.plan.outputs.auth_enabled }}
+      # The gateway door seals sessions with this Secret Manager secret (docs/runbooks/platform-auth.md, step c).
+      SESSION_SECRET_NAME: gateway-session-secret
     steps:
       - uses: google-github-actions/auth@v2
         with:
@@ -170,6 +184,26 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
+      - name: Require the session secret (platform.auth.enabled)
+        if: needs.plan.outputs.auth_enabled == 'true'
+        # Reads metadata only: the CI service account needs roles/secretmanager.viewer on this one secret, never its value.
+        run: |
+          if ! out="$(gcloud secrets describe "$SESSION_SECRET_NAME" --project "$GCP_PROJECT" --format='value(name)' 2>&1)"; then
+            if grep -q 'PERMISSION_DENIED' <<< "$out"; then
+              echo "::error::The CI service account cannot see Secret Manager secret ${SESSION_SECRET_NAME} in ${GCP_PROJECT}: grant it roles/secretmanager.viewer on that secret — docs/runbooks/platform-auth.md, step (c)"
+            else
+              echo "::error::platform.auth.enabled is true but Secret Manager secret ${SESSION_SECRET_NAME} does not exist in ${GCP_PROJECT}; the gateway door needs it as SESSION_SECRET — create it: docs/runbooks/platform-auth.md, step (c)"
+            fi
+            sed 's/^/  /' <<< "$out"
+            exit 1
+          fi
+          enabled="$(gcloud secrets versions list "$SESSION_SECRET_NAME" --project "$GCP_PROJECT" --filter='state=ENABLED' --limit=1 --format='value(name)' 2>&1)" || true
+          if [[ -z "$enabled" || "$enabled" == *ERROR* ]]; then
+            echo "::error::Secret Manager secret ${SESSION_SECRET_NAME} has no enabled version, so :latest cannot resolve — add one: docs/runbooks/platform-auth.md, step (c)"
+            [[ -n "$enabled" ]] && sed 's/^/  /' <<< "$enabled"
+            exit 1
+          fi
+          echo "secret ${SESSION_SECRET_NAME}: present, with an enabled version"
       - name: gcloud run deploy (by the immutable sha- tag)
         env:
           IMAGE: ${{ needs.plan.outputs.image }}
@@ -177,14 +211,20 @@ jobs:
           VERSION: ${{ needs.plan.outputs.version }}
           GATEWAY_PATH: ${{ needs.plan.outputs.gateway_path }}
         run: |
-          # --update-env-vars (not --set-env-vars) so an operator's REGISTRY_URL / LOG_LEVEL survive a deploy.
+          # --update-env-vars / --update-secrets (not --set-*) so an operator's REGISTRY_URL, LOG_LEVEL, UPSTREAM_AUTH and
+          # SESSION_SECRET_PREVIOUS (a key rotation in progress) survive a deploy.
+          secrets=()
+          if [[ "$AUTH_ENABLED" == "true" ]]; then
+            secrets=(--update-secrets "SESSION_SECRET=${SESSION_SECRET_NAME}:latest")
+          fi
           gcloud run deploy "$SERVICE" \
             --project "$GCP_PROJECT" --region "$GCP_REGION" \
             --image "${IMAGE}:sha-${SHORT_SHA}" \
             --port 8080 --allow-unauthenticated \
             --update-env-vars "GATEWAY_VERSION=${VERSION},GATEWAY_PATH=${GATEWAY_PATH}" \
+            "${secrets[@]}" \
             --quiet
-      - name: Smoke test the health route
+      - name: Smoke test the health route (and the sign-in route while platform.auth.enabled)
         env:
           GATEWAY_PATH: ${{ needs.plan.outputs.gateway_path }}
         run: |
@@ -193,6 +233,14 @@ jobs:
           if ! curl -fsS --retry 5 --retry-delay 3 --retry-all-errors -D - -o /dev/null "${url}${GATEWAY_PATH}/health" | grep -i '^x-gateway-version'; then
             echo "::error::${url}${GATEWAY_PATH}/health did not answer with X-Gateway-Version"
             exit 1
+          fi
+          if [[ "$AUTH_ENABLED" == "true" ]]; then
+            code="$(curl -sS --retry 3 --retry-delay 3 -o /dev/null -w '%{http_code}' "${url}${GATEWAY_PATH}/auth/me" || true)"
+            if [[ "$code" != "401" ]]; then
+              echo "::error::${url}${GATEWAY_PATH}/auth/me answered ${code} without a token; the door must answer 401 (sign-in required)"
+              exit 1
+            fi
+            echo "${GATEWAY_PATH}/auth/me without a token: 401, as it must"
           fi
 
   hosting:
@@ -210,6 +258,10 @@ jobs:
         with:
           node-version: 20
       - name: Build portal
+        env:
+          # Optional repository variables; empty when unset, and the portal then falls back to /__/firebase/init.json.
+          PUBLIC_FIREBASE_API_KEY: ${{ vars.FIREBASE_WEB_API_KEY }}
+          PUBLIC_FIREBASE_APP_ID: ${{ vars.FIREBASE_WEB_APP_ID }}
         run: make portal-build
       - name: Check firebase.json is rendered from the registry
         run: node scripts/render-firebase.mjs --check

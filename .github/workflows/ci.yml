@@ -15,7 +15,9 @@ jobs:
           node-version: 20
       - name: Validate registry
         run: node scripts/validate-registry.mjs
-      - name: Self-test the registry scripts (register-deployment)
+      - name: Self-test the repo scripts (validate-registry, render-firebase, register/sync-deployments, grant-groups)
+        # Every scripts/*.test.mjs; no network, no cloud. (The Firestore rules proof needs Java and the emulator:
+        # scripts/test-firestore-rules.mjs, run locally — docs/runbooks/platform-auth.md.)
         run: node --test scripts/*.test.mjs
       - name: Check the generated site-<id> skills are current
         run: node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs --check
@@ -27,6 +29,9 @@ jobs:
       - name: Build portal
         if: hashFiles('apps/portal/package.json') != ''
         run: make portal-build
+      - name: Test portal (unit)
+        if: hashFiles('apps/portal/package.json') != ''
+        run: make portal-test
       - name: Test gateway
         if: hashFiles('apps/gateway/package.json') != ''
         run: make gateway-test

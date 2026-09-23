@@ -1,6 +1,6 @@
 ---
 name: site-plugin
-description: How an application joins eisensoftware.com and stays registered — platform contract v1 (full path forwarded under /<id>, relative redirects, the single __session cookie Firebase Hosting forwards, the health JSON with version and commit, APP_VERSION/APP_COMMIT/APP_DEPLOYED_AT set with --update-env-vars, one base-path helper), its registry entry, base-path support per framework (Next.js basePath, FastAPI root_path or BASE_PATH, Vite base, SvelteKit paths.base), CORS and OAuth origins, how deploys reach the registry (scheduled health sync, optional register-app call), what routing.ready means and who flips it, and the generated site-<id> skills rendered from the registry. Load when onboarding an app to the platform, changing an app's path, URL, API block, health check, cookies, redirects or status, wiring its deploy workflow to the registry, or regenerating the site skills.
+description: How an application joins eisensoftware.com and stays registered — platform contract v1 (full path forwarded under /<id>, relative redirects, the single __session cookie Firebase Hosting forwards, the health JSON with version and commit, APP_VERSION/APP_COMMIT/APP_DEPLOYED_AT set with --update-env-vars, one base-path helper), the optional access block (sign-in and groups through the gateway door, closing the run.app side door), its registry entry, base-path support per framework (Next.js basePath, FastAPI root_path or BASE_PATH, Vite base, SvelteKit paths.base), CORS and OAuth origins, how deploys reach the registry (scheduled health sync, optional register-app call), what routing.ready means and who flips it, and the generated site-<id> skills rendered from the registry. Load when onboarding an app to the platform, changing an app's path, URL, API block, health check, cookies, redirects or status, wiring its deploy workflow to the registry, or regenerating the site skills.
 ---
 
 # Site plugin — joining the platform
@@ -37,14 +37,42 @@ What every app on the shared domain guarantees at runtime. The gateway, the port
    `import.meta.env.BASE_URL`, Next.js `basePath` plus one helper for hand-built URLs), never by writing `/<id>` or a
    bare `/` into components, so the app works on both hosts and survives a path change.
 
+### Access (optional)
+
+An app that must not be public adds `"access": {"groups": ["<group id>", …], "note": "…"}` to its registry entry: ids
+from `platform.auth.groups` (a person in any one of them passes), `[]` for any signed-in person. It needs
+`web.kind: "cloud-run"`. While `platform.auth.enabled` and `platform.gateway.enabled` are true, Hosting rewrites
+`/<id>{,/**}` to the gateway, and the **gateway door** is the only way in (`docs/runbooks/platform-auth.md`):
+
+- **Sign-in belongs to the platform.** Identity is Firebase Authentication in `platform.auth.projectId`; a person's groups
+  are the custom claim `groups`, set only with the monorepo's `scripts/grant-groups.mjs`. The portal opens the door with
+  `POST /<id>/__door/session` (Bearer ID token); the door answers with its own sealed `__session` (`Path=/<id>`,
+  HttpOnly, at most `sessionHours`). `/<id>/__door/*` is reserved: the app serves nothing there.
+- **Contract v1 still applies, unchanged.** The door forwards the full path to `web.url` with the app's own `__session`
+  value restored, and re-seals any `__session` the app sets, so rule 3 holds; keep that value under about 2 KB (the
+  envelope must fit in one 4 KB cookie). Relative redirects (rule 2) matter even more: an absolute one to `run.app`
+  walks out of the door.
+- **Refusals are the door's.** Page loads (`Accept: text/html`) go to `/?gate=<id>&reason=…` (303); other requests get
+  JSON 401/403/503. A request that fails the policy never reaches the app, yet the app keeps its own authentication for
+  what it does (defence in depth).
+- **The API through the gateway** (`/api/<id>/*`) needs a Bearer ID token that passes the same policy, except the health
+  route (rule 4), which stays public so `/api/health` keeps working. (The deployment sync reads health from `api.baseUrl`
+  directly; once the side door below is closed it sees 403 until it reads through the gateway — runbook, step h.)
+- **Close the side door.** The direct `run.app` URL bypasses everything: remove `allUsers` from the service's
+  `roles/run.invoker`, grant that role to the gateway's runtime service account, and deploy without
+  `--allow-unauthenticated` (runbook, step h). OAuth callbacks then must use the platform URL (rule 5).
+- **Locally everything is open**: the portal's realm is `open` on localhost, and the gateway's `ACCESS_MODE=open` is
+  refused on Cloud Run.
+
 ## Rules
 
 1. **One registry entry, written by hand once.** Copy an existing object in `registry/registry.json` (`registry/README.md`
    documents every field): `id` (slug), `name`, `description` (one sentence), `icon`, `status`, `path` (`/<id>` unless
    there is a reason), `routing` (`mode: path-prefix`, `ready: false`), `web` (`kind: cloud-run`, project, region,
-   service, url), `api` (only when there is an API to front), `repo` (`github`, `branch`, `localPath`), `deployment`
-   (empty strings, `deployedBy: manual`), `tags`. Then `make check && make render-firebase` and commit `registry.json`
-   together with `firebase.json`.
+   service, url), `api` (only when there is an API to front), `access` (only for an app behind sign-in; "Access
+   (optional)" above), `repo` (`github`, `branch`, `localPath`), `deployment` (empty strings, `deployedBy: manual`),
+   `tags`. The ids `registry`, `health` and `auth` are reserved. Then `make check && make render-firebase` and commit
+   `registry.json` together with `firebase.json`.
 2. **Serve under the path on both hosts.** Hosting passes the full path through, so `https://<service>…run.app/<path>/…`
    and `https://eisensoftware.com/<path>/…` must both work, and nothing may live outside `<path>`. One environment
    variable (`BASE_PATH=/<path>`) drives it wherever the framework allows:
@@ -107,7 +135,7 @@ What every app on the shared domain guarantees at runtime. The gateway, the port
 9. **Site skills are generated, never edited.** After any registry change run
    `node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs` (`--check` in CI). It renders
    `templates/site-SKILL.md` into `plugins/eisen-platform/skills/sites/site-<id>/SKILL.md` — one `site-<id>` skill per app
-   with its URLs, API, auth, repo, deployment and `curl` smoke tests — so an agent working on any app knows where it
+   with its URLs, who may enter (access), API, auth, repo, deployment and `curl` smoke tests — so an agent working on any app knows where it
    lives and how to poke it. Output is deterministic; a stale or missing file fails `--check`.
 10. **Onboard in this order**, stopping at the first failing step: registry entry (1) → base path (2) → `/health` (3) →
     origins (5) → Dockerfile per `image-tagging` → deploy workflow per `deploy-versioning` setting the `APP_*` variables

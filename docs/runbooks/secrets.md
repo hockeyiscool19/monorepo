@@ -47,3 +47,6 @@ code changes. If the service account line prints nothing, the service runs as th
    xAI/Grok keys and `SESSION_SECRET` is cheap insurance; after rotating, add the new value with
    `gcloud secrets versions add "$SECRET" --data-file=-` and redeploy (a `:latest` reference picks it up on the next revision).
 3. **Verify.** `gcloud run services describe <service> --format=json` should list these names only with `valueFrom`.
+
+The gateway's own `SESSION_SECRET` (the key that seals door sessions) lives in Secret Manager from the start as
+`gateway-session-secret`: creation, access and rotation are in `docs/runbooks/platform-auth.md` (steps c and i).

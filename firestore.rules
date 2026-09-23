@@ -1,0 +1,99 @@
+rules_version = '2';
+
+// Firestore security rules for the platform project (registry platform.auth.projectId, researcher-455022).
+// The only data is the My Get-a-way board: one board document and its cards, readable and writable by the group
+// `owner` only — the custom claim `groups`, written only by scripts/grant-groups.mjs. Everything else is denied.
+//
+// Deploy (Jordan's go):  firebase deploy --only firestore:rules --project researcher-455022   (docs/runbooks/platform-auth.md, step d)
+// Prove locally:         firebase emulators:exec --only firestore --project researcher-455022 'node scripts/test-firestore-rules.mjs'
+//
+// Card schema the portal must write (exactly these 12 keys):
+//   key          string  ^GET-[0-9]{1,6}$                     immutable
+//   number       int     ≥ 1                                   immutable
+//   title        string  1–120 characters
+//   description  string  0–2000 characters
+//   type         'idea' | 'feature' | 'fix' | 'chore'
+//   priority     'lowest' | 'low' | 'medium' | 'high' | 'highest'
+//   status       'backlog' | 'todo' | 'doing' | 'done'
+//   labels       list of at most 5 strings
+//   createdAt    timestamp                                     immutable
+//   updatedAt    timestamp
+//   completedAt  timestamp or null
+//   createdBy    string, the writer's uid on create            immutable
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Signed in, and the ID token's `groups` claim is a list that contains 'owner'.
+    function isOwner() {
+      return request.auth != null
+        && ('groups' in request.auth.token)
+        && request.auth.token.groups is list
+        && 'owner' in request.auth.token.groups;
+    }
+
+    // boards/getaway: {nextNumber: int ≥ 1 (the number the next card gets), updatedAt: timestamp}.
+    function validBoard(d) {
+      return d.keys().hasOnly(['nextNumber', 'updatedAt'])
+        && d.keys().hasAll(['nextNumber', 'updatedAt'])
+        && d.nextNumber is int && d.nextNumber >= 1
+        && d.updatedAt is timestamp;
+    }
+
+    // At most five labels, each a string (rules have no loops, so each position is checked).
+    function validLabels(labels) {
+      return labels is list && labels.size() <= 5
+        && (labels.size() < 1 || labels[0] is string)
+        && (labels.size() < 2 || labels[1] is string)
+        && (labels.size() < 3 || labels[2] is string)
+        && (labels.size() < 4 || labels[3] is string)
+        && (labels.size() < 5 || labels[4] is string);
+    }
+
+    function validCard(d) {
+      return d.keys().hasOnly(['key', 'number', 'title', 'description', 'type', 'priority', 'status', 'labels',
+                               'createdAt', 'updatedAt', 'completedAt', 'createdBy'])
+        && d.keys().hasAll(['key', 'number', 'title', 'description', 'type', 'priority', 'status', 'labels',
+                            'createdAt', 'updatedAt', 'completedAt', 'createdBy'])
+        && d.key is string && d.key.matches('^GET-[0-9]{1,6}$')
+        && d.number is int && d.number >= 1
+        && d.title is string && d.title.size() >= 1 && d.title.size() <= 120
+        && d.description is string && d.description.size() <= 2000
+        && d.type in ['idea', 'feature', 'fix', 'chore']
+        && d.priority in ['lowest', 'low', 'medium', 'high', 'highest']
+        && d.status in ['backlog', 'todo', 'doing', 'done']
+        && validLabels(d.labels)
+        && d.createdAt is timestamp
+        && d.updatedAt is timestamp
+        && (d.completedAt == null || d.completedAt is timestamp)
+        && d.createdBy is string;
+    }
+
+    // Fields a card keeps for life.
+    function unchangedIdentity(before, after) {
+      return after.key == before.key
+        && after.number == before.number
+        && after.createdAt == before.createdAt
+        && after.createdBy == before.createdBy;
+    }
+
+    match /boards/getaway {
+      allow read, delete: if isOwner();
+      allow create, update: if isOwner() && validBoard(request.resource.data);
+
+      match /cards/{cardId} {
+        allow read, delete: if isOwner();
+        allow create: if isOwner()
+          && validCard(request.resource.data)
+          && request.resource.data.createdBy == request.auth.uid;
+        allow update: if isOwner()
+          && validCard(request.resource.data)
+          && unchangedIdentity(resource.data, request.resource.data);
+      }
+    }
+
+    // Deny everything else (explicit for readers; rules deny by default and an allow above is never overridden).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

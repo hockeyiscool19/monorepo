@@ -7,8 +7,8 @@ plus one generated skill per registered site so an agent knows where each app li
 |---|---|---|
 | `deploy-versioning` | cutting a release, writing a deploy workflow, choosing a version string, rolling back, touching a `deployment` block | ten rules; `templates/RELEASE.md`, `templates/CHANGELOG.md` |
 | `image-tagging` | writing a Dockerfile, a build-and-push step, a Cloud Run deploy command, a Hosting rewrite, a retention policy | ten rules; `templates/Dockerfile.node`, `templates/Dockerfile.python`, `templates/build-push.sh` |
-| `site-plugin` | onboarding an app, changing its path, URL, API, health check or status, wiring `register-app`, regenerating site skills | ten rules; `templates/site-SKILL.md`, `scripts/generate-site-skills.mjs` |
-| `site-<id>` (generated, one per app) | working on, deploying, debugging, smoke-testing or calling that app | `skills/sites/site-<id>/SKILL.md`: URLs, API + health, auth mode, repo, deployment, `curl` smoke tests |
+| `site-plugin` | onboarding an app, changing its path, URL, API, health check or status, putting it behind sign-in (`access`), wiring `register-app`, regenerating site skills | ten rules; `templates/site-SKILL.md`, `scripts/generate-site-skills.mjs` |
+| `site-<id>` (generated, one per app) | working on, deploying, debugging, smoke-testing or calling that app | `skills/sites/site-<id>/SKILL.md`: URLs, who may enter (access, the gateway door), API + health, auth mode, repo, deployment, `curl` smoke tests |
 
 Every hand-written `SKILL.md` ends with a 100-point audit: ship at 85 or more, with the missing points written into
 the plan's Progress section.
