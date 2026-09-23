@@ -63,7 +63,8 @@ for repo in "${REPOS[@]}"; do
   echo "   ${repo}:"
   while IFS='=' read -r key value; do
     if $APPLY_GITHUB; then
-      gh variable set "${key}" --repo "${repo}" --body "${value}" >/dev/null && echo "     set ${key}"
+      # </dev/null: gh must not read the here-string this loop is consuming.
+      gh variable set "${key}" --repo "${repo}" --body "${value}" </dev/null >/dev/null && echo "     set ${key}"
     else
       echo "     gh variable set ${key} --repo ${repo} --body '${value}'"
     fi

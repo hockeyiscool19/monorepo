@@ -3,14 +3,19 @@
 No service-account keys anywhere. GitHub's OIDC token is exchanged for short-lived GCP credentials through
 Workload Identity Federation, the same mechanism vale's `deploy.yml` already expects.
 
-## What exists in `researcher-455022` (as of 2026-09-23)
+## What exists in `researcher-455022` (bootstrap applied 2026-09-23)
 
 | Thing | Value | State |
 |---|---|---|
 | Pool | `github-pool` | exists |
-| Provider | `github-pool/providers/github`, issuer `https://token.actions.githubusercontent.com` | pinned to `assertion.repository=='hockeyiscool19/garmin'` |
-| Service account | `github-actions@researcher-455022.iam.gserviceaccount.com` | roles: run.admin, artifactregistry.writer, iam.serviceAccountUser, storage.admin |
-| SA impersonation | `roles/iam.workloadIdentityUser` | only for repo `hockeyiscool19/garmin` |
+| Provider | `github-pool/providers/github`, issuer `https://token.actions.githubusercontent.com` | condition `assertion.repository_owner=='hockeyiscool19'` (was: only `hockeyiscool19/garmin`) |
+| Service account | `github-actions@researcher-455022.iam.gserviceaccount.com` | roles: run.admin, artifactregistry.writer, iam.serviceAccountUser, storage.admin, firebasehosting.admin, serviceusage.serviceUsageConsumer, cloudbuild.builds.editor |
+| SA impersonation | `roles/iam.workloadIdentityUser` | repos `hockeyiscool19/monorepo`, `hockeyiscool19/healthconnect` (vale), `hockeyiscool19/garmin` (healthconnect) |
+| Repository variables | `GCP_PROJECT`, `GCP_REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT` | set in all three repos |
+
+The provider admits any repo owned by `hockeyiscool19`, but a repo can only *act* as the service account if it has its own
+`workloadIdentityUser` binding above; nothing else in the project grants access to the pool as a whole. To add a repo,
+run the script with `REPOS="hockeyiscool19/<repo>" ./scripts/bootstrap-ci-auth.sh --apply-github`.
 
 ## One-time setup
 
