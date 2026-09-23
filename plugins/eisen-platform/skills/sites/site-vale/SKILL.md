@@ -28,7 +28,7 @@ Routing note: Verified 2026-09-23 (vale-00003-fax): /vale through Hosting, root 
 ## Repository and deployment
 
 - Repository https://github.com/hockeyiscool19/healthconnect (branch `main`) · local checkout `~/vale`
-- Deployed version `0.1.0`, by `manual` — no CI receipt yet: neither the scheduled health sync nor a `register-app` call has recorded a deploy (site-plugin rule 6)
+- Deployed version `0.0.0+sha.2de14b0d0fdd`, sha `2de14b0d0fdd65e6cc9e12c1aabd3477824bec5a`, at 2026-09-23T16:09:16Z, by `ci`
 - Service: `gcloud run services describe vale --project researcher-455022 --region us-central1 --format 'value(status.latestReadyRevisionName,status.url)'`
 
 ## Smoke tests
