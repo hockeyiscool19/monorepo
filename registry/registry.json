@@ -60,8 +60,8 @@
       "path": "/healthconnect",
       "routing": {
         "mode": "path-prefix",
-        "ready": false,
-        "note": "App honors BASE_PATH=/healthconnect; flip to true once the Cloud Run env is set and the rewrite is verified."
+        "ready": true,
+        "note": "Verified 2026-09-23 through the Hosting rewrite: HTML, /healthconnect/assets/* and /healthconnect/health all 200. OAuth PUBLIC_URL on the service still points at the Cloud Run host (Phase 4)."
       },
       "web": {
         "kind": "cloud-run",
@@ -69,6 +69,11 @@
         "region": "us-central1",
         "service": "jordan-lifts",
         "url": "https://jordan-lifts-382031913173.us-central1.run.app"
+      },
+      "api": {
+        "baseUrl": "https://jordan-lifts-382031913173.us-central1.run.app/healthconnect",
+        "healthPath": "/health",
+        "auth": "cookie"
       },
       "repo": {
         "github": "hockeyiscool19/garmin",

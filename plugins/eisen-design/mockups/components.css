@@ -1,0 +1,4 @@
+/* Neutral component rules for the reference mockup. The portal's own neutral stylesheet targets exactly the
+   reference markup, so the mockup reuses it rather than keeping a drifting copy. Served over HTTP from the repo
+   root (or opened from the file system), this relative path resolves to apps/portal/src/styles/components.css. */
+@import url("../../../apps/portal/src/styles/components.css");

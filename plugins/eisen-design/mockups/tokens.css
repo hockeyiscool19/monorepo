@@ -1,0 +1,3 @@
+/* The reference mockup uses the neutral token contract. This shim keeps reference.html's relative links
+   working without a second copy of the neutral file: it simply imports the contract's tokens.css. */
+@import url("../skills/design-tokens/tokens.css");

@@ -24,7 +24,9 @@
 
 <li class="tile" data-status={tile.status}>
 	{#if tile.href}
-		<a class="tile-link" href={tile.href}>{@render body()}</a>
+		<!-- rel="external": app paths (/vale, /healthconnect/…) are served by Firebase Hosting rewrites, not by
+		     this app, so the prerender crawler must not follow them and the client router must not intercept them. -->
+		<a class="tile-link" href={tile.href} rel="external">{@render body()}</a>
 	{:else}
 		<div class="tile-link">{@render body()}</div>
 	{/if}
