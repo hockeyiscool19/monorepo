@@ -57,6 +57,7 @@ unreadable or invalid registry fails the run. An app that does not serve the con
 | `version "dev" (APP_VERSION not set)`, `health JSON has no commit (APP_COMMIT not set)` | the deploy did not set the variables | `--update-env-vars "APP_VERSION=…,APP_COMMIT=…,APP_DEPLOYED_AT=…"` (contract rule 5) |
 | `version "…" must match …`, `commit "…" must be 7–40 hex characters` | a value breaks the registry schema | fix the value the deploy sets |
 | `health reports app "x", not "<id>"` | `api.baseUrl` points at another app | fix `api.baseUrl`, registry edit |
+| `health 403` (vale) | the service no longer admits `allUsers` (the run.app side door is closed, `platform-auth.md` step h) | read guarded apps' health through the gateway's public `/api/<id>/health`, or give the sync an identity token (`platform-auth.md`, h.5) |
 
 ## Push path (optional, faster)
 
@@ -89,6 +90,7 @@ Nothing else in the registry is touched by CI; `routing.ready`, `status` and `ap
 | Repo | Kind | Name | Value / source |
 |---|---|---|---|
 | monorepo | variable | `GCP_PROJECT`, `GCP_REGION`, `GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT` | `scripts/bootstrap-ci-auth.sh --apply-github` (docs/runbooks/ci-auth.md) |
+| monorepo | variable, optional | `FIREBASE_WEB_API_KEY`, `FIREBASE_WEB_APP_ID` | the portal's Firebase web config, passed to the build as `PUBLIC_FIREBASE_*` (`docs/runbooks/platform-auth.md`, step b); unset, the portal reads `/__/firebase/init.json` |
 | monorepo | secret | none | `register-deployment.yml` and `sync-deployments.yml` push with `GITHUB_TOKEN` (`permissions: contents: write`; `main` is unprotected) |
 | vale (`hockeyiscool19/healthconnect`) | variable | the same four `GCP_*` | bootstrap script |
 | vale | variable, optional | `GCP_PROJECT_NUMBER` · `PUBLIC_APP_URL` (per Environment) | defaults `382031913173` · `https://eisensoftware.com/vale` (production), `https://vale-preview-382031913173.us-central1.run.app/vale` (preview) |

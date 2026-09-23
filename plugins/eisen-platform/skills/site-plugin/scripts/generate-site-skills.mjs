@@ -6,7 +6,9 @@
 //   options: --registry <path> (default registry/registry.json) · --out <dir> (default ../sites) · --template <path>
 //
 // The template is templates/site-SKILL.md: `{{key}}` placeholders plus `{{#if key}}…{{/if}}` / `{{#unless key}}…{{/unless}}`
-// blocks (nestable). Output is deterministic — no timestamps — so the same registry always renders the same bytes and
+// blocks (nestable). An app with an `access` block gets an "Access" section: who may enter (group profiles by name from
+// platform.auth.groups), whether the gateway door serves it, the door's session endpoint and refusals, and door-aware smoke
+// tests. Output is deterministic — no timestamps — so the same registry always renders the same bytes and
 // `--check` can compare byte for byte. A sites/<dir>/SKILL.md that carries the generated marker but whose id has left
 // the registry is removed (or reported by --check). Hand-written files without the marker are never touched.
 
@@ -25,7 +27,7 @@ function parseArgs(argv) {
     const a = argv[i];
     if (a === "--check") opts.check = true;
     else if (a === "--registry" || a === "--out" || a === "--template") opts[a.slice(2)] = resolve(argv[++i] ?? "");
-    else if (a === "-h" || a === "--help") { console.log(readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 11).map((l) => l.replace(/^\/\/ ?/, "")).join("\n")); process.exit(0); }
+    else if (a === "-h" || a === "--help") { console.log(readFileSync(fileURLToPath(import.meta.url), "utf8").split("\n").slice(1, 13).map((l) => l.replace(/^\/\/ ?/, "")).join("\n")); process.exit(0); }
     else throw new Error(`unknown option ${a}`);
   }
   return opts;
@@ -80,6 +82,34 @@ const AUTH_NOTES = {
   "api-key": "Send the key in the `X-API-Key` header; the app's README says where keys are issued.",
 };
 
+/** "👑 Jarl’s Court (`owner`), 🌿 Vale Circle (`vale`)" — group profiles by name, from platform.auth.groups. */
+function groupNames(registry, ids) {
+  const profiles = new Map((registry.platform.auth?.groups ?? []).map((g) => [g.id, g]));
+  return ids.map((id) => {
+    const g = profiles.get(id);
+    return g ? `${g.emblem ? `${g.emblem} ` : ""}${g.name} (\`${id}\`)` : `\`${id}\``;
+  }).join(", ");
+}
+
+/** The `access` part of the view model: who may enter and whether the gateway door is serving the app. */
+function accessView(registry, app) {
+  const access = app.access ?? null;
+  const auth = registry.platform.auth ?? {};
+  const gateway = registry.platform.gateway ?? {};
+  const doorActive = Boolean(access) && auth.enabled === true && gateway.enabled === true;
+  const groups = access?.groups ?? [];
+  return {
+    hasAccess: Boolean(access),
+    accessWho: groups.length ? `signed-in members of ${groupNames(registry, groups)}` : "any signed-in person (no group needed)",
+    accessNote: access?.note ?? "",
+    doorActive,
+    doorOffReason: auth.enabled !== true ? "`platform.auth.enabled` is false" : "`platform.gateway.enabled` is false",
+    authProject: auth.projectId ?? "",
+    sessionHours: String(auth.sessionHours ?? ""),
+    gatewayService: gateway.service ?? "gateway",
+  };
+}
+
 /** Everything the template can reference for one app. Strings only; booleans drive the blocks. */
 export function viewModel(registry, app) {
   const domain = registry.platform.domain;
@@ -90,18 +120,23 @@ export function viewModel(registry, app) {
   const api = app.api ?? null;
   const d = app.deployment ?? {};
   const auth = api?.auth ?? "none";
+  const access = accessView(registry, app);
   return {
     id: app.id, name: app.name, icon: app.icon ?? "", description: app.description, status: app.status, path: app.path,
     tags: (app.tags ?? []).map((t) => `\`${t}\``).join(", ") || "none",
     routingMode: app.routing?.mode ?? "path-prefix", routingReady: ready, routingNote: app.routing?.note ?? "",
     domain, platformUrl,
-    platformUrlNote: ready ? "canonical URL; the Hosting rewrite passes the full path through" : "not routable yet (`routing.ready` is false) — tiles link to the direct URL until the coordinator flips it",
+    platformUrlNote: !ready ? "not routable yet (`routing.ready` is false) — tiles link to the direct URL until the coordinator flips it"
+      : access.doorActive ? "canonical URL, served through the gateway door (see Access); the full path is passed through"
+      : "canonical URL; the Hosting rewrite passes the full path through",
     directUrl, directSmokeUrl: ready ? `${directUrl}${app.path}/` : `${directUrl}/`,
     altUrl: app.web.altUrl ?? "", service: app.web.service ?? "", region: app.web.region ?? "", project: app.web.project ?? "",
     hasApi: Boolean(api), apiBaseUrl: api?.baseUrl ?? "", healthPath: api?.healthPath ?? "", healthUrl: api ? `${api.baseUrl}${api.healthPath}` : "",
     auth, authNote: AUTH_NOTES[auth] ?? AUTH_NOTES.none, apiDocs: api?.docs ?? "",
     gatewayUrl: `https://${domain}${gateway.path ?? "/api"}/${app.id}/`, gatewayHealthUrl: `https://${domain}${gateway.path ?? "/api"}/health`,
+    gatewayAppHealthUrl: api ? `https://${domain}${gateway.path ?? "/api"}/${app.id}${api.healthPath}` : "",
     gatewayEnabled: gateway.enabled === true,
+    ...access,
     repoGithub: app.repo.github, repoUrl: `https://github.com/${app.repo.github}`, branch: app.repo.branch ?? "main", localPath: app.repo.localPath ?? "",
     version: d.version ?? "", sha: d.sha ?? "", imageTag: d.imageTag ?? "", deployedAt: d.deployedAt ?? "", deployedBy: d.deployedBy ?? "manual",
   };

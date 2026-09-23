@@ -2,10 +2,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eisensoftware.com/schema/registry.schema.json",
   "title": "Platform registry",
-  "description": "registry/registry.json: the single source of truth for the platform (domain, hosting, gateway) and every application on it. The portal tiles, firebase.json rewrites and gateway routes are all rendered from this file. The published copy at https://eisensoftware.com/registry.json is this object plus a generatedAt timestamp, with each app's `repo` block removed (private repository names and local paths). Each app's `deployment` block is patched by CI when an app repo reports a deploy.",
+  "description": "registry/registry.json: the single source of truth for the platform (domain, hosting, gateway, sign-in) and every application on it. The portal tiles, firebase.json rewrites and gateway routes are all rendered from this file. The published copy at https://eisensoftware.com/registry.json is this object plus a generatedAt timestamp, with each app's `repo` block removed (private repository names and local paths); `platform.auth` and each app's `access` are public and stay in it. Each app's `deployment` block is patched by CI when an app repo reports a deploy. Rules JSON Schema cannot express (unique ids, paths and group ids; every access group declared in platform.auth.groups) are enforced by scripts/validate-registry.mjs.",
   "type": "object",
   "additionalProperties": false,
   "required": ["contractVersion", "platform", "apps"],
+  "if": {
+    "required": ["apps"],
+    "properties": { "apps": { "type": "array", "contains": { "type": "object", "required": ["access"] } } }
+  },
+  "then": {
+    "properties": { "platform": { "required": ["auth"] } },
+    "description": "An app with `access` needs the platform's sign-in (platform.auth)."
+  },
   "properties": {
     "contractVersion": { "const": 1 },
     "generatedAt": {
@@ -39,6 +47,26 @@
             "region": { "type": "string" },
             "note": { "type": "string", "maxLength": 200 }
           }
+        },
+        "auth": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "provider", "projectId", "sessionHours", "groups"],
+          "description": "Platform sign-in (docs/runbooks/platform-auth.md). Identity is Firebase Authentication in `projectId`; a person's groups are the custom claim `groups` (an array of group ids), written only by scripts/grant-groups.mjs. Apps with an `access` block are served through the gateway door while `enabled` and platform.gateway.enabled are both true.",
+          "properties": {
+            "enabled": { "type": "boolean", "description": "When true (and the gateway is enabled), render-firebase rewrites every app with `access` to the gateway service: the door. When false, those apps are routed to their own service, unguarded." },
+            "provider": { "const": "firebase" },
+            "projectId": { "type": "string", "pattern": "^[a-z][a-z0-9-]{4,28}[a-z0-9]$", "description": "Firebase / GCP project that issues the ID tokens (token `aud`; `iss` is https://securetoken.google.com/<projectId>)." },
+            "sessionHours": { "type": "integer", "minimum": 1, "maximum": 168, "description": "Lifetime of a door session (the sealed `__session` cookie) in hours. A group removed from a person keeps working in a session sealed before the removal until it expires." },
+            "note": { "type": "string", "maxLength": 200 },
+            "groups": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": { "$ref": "#/$defs/group" },
+              "description": "The group profiles. Ids are unique (enforced by scripts/validate-registry.mjs); apps[].access.groups may name only these ids."
+            }
+          }
         }
       }
     },
@@ -53,8 +81,18 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "name", "description", "status", "path", "routing", "web", "repo", "deployment"],
+      "if": { "required": ["access"] },
+      "then": {
+        "properties": { "web": { "properties": { "kind": { "const": "cloud-run" } } } },
+        "description": "The gateway door forwards to a Cloud Run service, so an app with `access` must be web.kind cloud-run."
+      },
       "properties": {
-        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,30}$", "description": "Slug, unique across apps." },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]{1,30}$",
+          "not": { "enum": ["registry", "health", "auth"] },
+          "description": "Slug, unique across apps. `registry`, `health` and `auth` are reserved: they would shadow the gateway's <prefix>/registry, <prefix>/health and <prefix>/auth/* routes."
+        },
         "name": { "type": "string", "minLength": 1, "maxLength": 40 },
         "description": { "type": "string", "minLength": 1, "maxLength": 160, "description": "One sentence shown on the tile." },
         "icon": { "type": "string", "maxLength": 8, "description": "An emoji or short glyph shown on the tile." },
@@ -98,6 +136,22 @@
             "auth": { "type": "string", "enum": ["none", "firebase-id-token", "cookie", "api-key"] }
           }
         },
+        "access": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["groups"],
+          "description": "Who may enter. Present = the app is served only through the gateway door (Hosting rewrites <path>{,/**} to the gateway while platform.auth.enabled and platform.gateway.enabled): sign-in required, and the person's `groups` claim must share a group with `groups`. Absent = public. Requires platform.auth and web.kind cloud-run.",
+          "properties": {
+            "groups": {
+              "type": "array",
+              "uniqueItems": true,
+              "maxItems": 16,
+              "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,30}$" },
+              "description": "Group ids declared in platform.auth.groups; a person in any one of them passes. [] = any signed-in person."
+            },
+            "note": { "type": "string", "maxLength": 200 }
+          }
+        },
         "repo": {
           "type": "object",
           "additionalProperties": false,
@@ -122,6 +176,18 @@
           }
         },
         "tags": { "type": "array", "items": { "type": "string" }, "maxItems": 8 }
+      }
+    },
+    "group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "emblem", "description"],
+      "description": "A group profile: the value of the `groups` claim is a list of these ids; name, emblem and description are what people see.",
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,30}$", "description": "Slug stored in the `groups` custom claim; unique across groups." },
+        "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "emblem": { "type": "string", "maxLength": 8, "description": "An emoji or short glyph (at most 8 characters, counted as Unicode code points)." },
+        "description": { "type": "string", "minLength": 1, "maxLength": 160 }
       }
     }
   }
