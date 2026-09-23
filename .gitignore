@@ -13,6 +13,9 @@ coverage/
 *_credentials.json
 service-account*.json
 
+# personal Claude Code settings (permissions etc.); .claude/launch.json stays shared
+.claude/settings.local.json
+
 # firebase / gcloud local state
 .firebase/
 firebase-debug.log
