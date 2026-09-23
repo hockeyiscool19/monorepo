@@ -1,0 +1,187 @@
+<!doctype html>
+<!--
+  Reference screen for every ui-style-* mockup: the eisensoftware portal home. Component contract 1.1.
+  DO NOT EDIT THIS MARKUP IN A STYLE. Copy it verbatim to ui-style-<name>/mockup.html and style it with
+  ./tokens.css (the design-token contract) and ./components.css (that style's component rules).
+  Identical markup across styles is the proof that swapping a style never touches HTML.
+  The classes, states and attribute vocabularies are listed in skills/design-tokens/components.md.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>eisensoftware — apps</title>
+  <link rel="stylesheet" href="./tokens.css">
+  <link rel="stylesheet" href="./components.css">
+</head>
+<body>
+  <a class="skip-link" href="#apps">Skip to apps</a>
+
+  <header class="site-header">
+    <a class="wordmark" href="/" aria-label="eisensoftware home">eisensoftware</a>
+    <nav class="site-nav" aria-label="Primary">
+      <a href="#apps" aria-current="page">Apps</a>
+      <a href="/api/registry">Registry</a>
+      <a href="/api/health">Status</a>
+    </nav>
+    <button class="theme-toggle" type="button" aria-pressed="false" data-theme-toggle>Dark mode</button>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <h1>Everything I build, one door.</h1>
+      <p class="lede">Personal apps on eisensoftware.com. Pick a tile to open it.</p>
+      <p class="meta">
+        <span class="status-dot" data-state="ok" aria-hidden="true"></span>
+        Gateway healthy · 3 apps live · updated 2 min ago
+      </p>
+    </section>
+
+    <section id="apps" class="apps" aria-labelledby="apps-heading">
+      <div class="section-head">
+        <h2 id="apps-heading">Apps</h2>
+        <form class="filter" role="search">
+          <label for="q">Filter</label>
+          <input id="q" type="search" placeholder="Search apps" autocomplete="off">
+        </form>
+      </div>
+
+      <ul class="tiles" role="list">
+        <li class="tile" data-status="live">
+          <a class="tile-link" href="/vale/">
+            <span class="tile-icon" aria-hidden="true">🌿</span>
+            <span class="tile-body">
+              <span class="tile-title">Vale</span>
+              <span class="tile-desc">Health, happiness, and virtue: habits, diet, biodata, labs.</span>
+            </span>
+            <span class="tile-foot">
+              <span class="badge" data-kind="live">Live</span>
+              <span class="version">v0.1.0</span>
+              <span class="tile-cta" aria-hidden="true">Open →</span>
+            </span>
+          </a>
+        </li>
+        <li class="tile" data-status="live">
+          <a class="tile-link" href="/healthconnect/">
+            <span class="tile-icon" aria-hidden="true">🏋️</span>
+            <span class="tile-body">
+              <span class="tile-title">HealthConnect</span>
+              <span class="tile-desc">Lifts, Garmin HRV and training data in one place.</span>
+            </span>
+            <span class="tile-foot">
+              <span class="badge" data-kind="live">Live</span>
+              <span class="version">v0.1.0</span>
+              <span class="tile-cta" aria-hidden="true">Open →</span>
+            </span>
+          </a>
+        </li>
+        <li class="tile" data-status="beta">
+          <a class="tile-link" href="/topology/">
+            <span class="tile-icon" aria-hidden="true">🕸️</span>
+            <span class="tile-body">
+              <span class="tile-title">Topology</span>
+              <span class="tile-desc">Topology optimization and CNC outputs.</span>
+            </span>
+            <span class="tile-foot">
+              <span class="badge" data-kind="beta">Beta</span>
+              <span class="version">v0.1.0</span>
+              <span class="tile-cta" aria-hidden="true">Open →</span>
+            </span>
+          </a>
+        </li>
+        <li class="tile" data-status="live">
+          <a class="tile-link" href="/homereelz/">
+            <span class="tile-icon" aria-hidden="true">🎬</span>
+            <span class="tile-body">
+              <span class="tile-title">HomeReelz</span>
+              <span class="tile-desc">Short video tours for homes on the market.</span>
+            </span>
+            <span class="tile-foot">
+              <span class="badge" data-kind="live">Live</span>
+              <span class="version">v1.4.2</span>
+              <span class="tile-cta" aria-hidden="true">Open →</span>
+            </span>
+          </a>
+        </li>
+        <li class="tile" data-status="planned">
+          <div class="tile-link">
+            <span class="tile-icon" aria-hidden="true">🧪</span>
+            <span class="tile-body">
+              <span class="tile-title">Darwinbench</span>
+              <span class="tile-desc">Make AIs fit your business.</span>
+            </span>
+            <span class="tile-foot">
+              <span class="badge" data-kind="planned">Planned</span>
+              <span class="version">—</span>
+            </span>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="deployments" aria-labelledby="deploy-heading">
+      <h2 id="deploy-heading">Recent deployments</h2>
+      <div class="table-wrap" role="region" aria-label="Recent deployments table" tabindex="0">
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">App</th>
+              <th scope="col" class="num">Version</th>
+              <th scope="col">Commit</th>
+              <th scope="col">Deployed</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-label="App">Vale</td>
+              <td data-label="Version" class="num">0.1.0</td>
+              <td data-label="Commit"><code>8cc0085</code></td>
+              <td data-label="Deployed">2026-09-22 18:40</td>
+              <td data-label="Status"><span class="badge" data-kind="live">Healthy</span></td>
+            </tr>
+            <tr>
+              <td data-label="App">HealthConnect</td>
+              <td data-label="Version" class="num">0.1.0</td>
+              <td data-label="Commit"><code>a91f3c2</code></td>
+              <td data-label="Deployed">2026-09-20 09:12</td>
+              <td data-label="Status"><span class="badge" data-kind="warning">Routing pending</span></td>
+            </tr>
+            <tr>
+              <td data-label="App">Topology</td>
+              <td data-label="Version" class="num">0.1.0</td>
+              <td data-label="Commit"><code>5d0e7b9</code></td>
+              <td data-label="Deployed">2026-08-30 14:05</td>
+              <td data-label="Status"><span class="badge" data-kind="beta">Beta</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" type="button">Refresh registry</button>
+        <button class="btn btn-secondary" type="button">View gateway logs</button>
+        <button class="btn btn-text" type="button">Docs</button>
+      </div>
+      <div class="alert" data-kind="warning" role="status">
+        <span class="alert-body"><strong>HealthConnect:</strong> routing is not ready, so its tile opens the Cloud Run URL directly.</span>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>© 2026 Jordan Eisenman · <a href="https://github.com/hockeyiscool19/monorepo">Source</a> · <a href="/api/registry">registry.json</a></p>
+  </footer>
+
+  <script>
+    // Theme toggle: mirrors the data-theme contract from design-tokens (light | dark, else OS preference).
+    const btn = document.querySelector("[data-theme-toggle]");
+    const root = document.documentElement;
+    const apply = (dark) => {
+      root.dataset.theme = dark ? "dark" : "light";
+      btn.setAttribute("aria-pressed", String(dark));
+      btn.textContent = dark ? "Light mode" : "Dark mode";
+    };
+    btn.addEventListener("click", () => apply(root.dataset.theme !== "dark"));
+  </script>
+</body>
+</html>

@@ -8,7 +8,7 @@ Skills load into Claude; the scripts and CSS files are what the apps consume.
 | `design-tokens` | the token contract, the neutral `tokens.css`, the contrast checker | `skills/design-tokens/{SKILL.md,tokens.css,scripts/check-contrast.mjs}` |
 | `information-architecture` | a method plus blank forms for inventory, objects, sitemap, URLs, tree tests | `skills/information-architecture/{SKILL.md,templates/}` |
 | `accessibility-ada` | WCAG 2.2 AA rules in build order, the criterion checklist, the axe audit script | `skills/accessibility-ada/{SKILL.md,checklist.md,scripts/a11y-audit.sh}` |
-| `ui-style-<name>` × 5 | a complete style: `tokens.css` (light + dark), `components.css`, `mockup.html` | `skills/ui-style-{expressive,editorial,dense,brutalist,organic}/` |
+| `ui-style-<name>` × 6 | a complete style: `tokens.css` (light + dark), `components.css`, `mockup.html` | `skills/ui-style-{expressive,editorial,dense,brutalist,organic,nordic}/` |
 
 `mockups/reference.html` is the reference screen (the portal home) that every style mockup copies verbatim.
 The side-by-side gallery is [`docs/mockups/index.html`](../../docs/mockups/index.html).
