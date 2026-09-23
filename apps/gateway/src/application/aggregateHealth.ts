@@ -1,8 +1,10 @@
 import { UpstreamError } from "../domain/errors.js";
 import type { AppManifest, AppStatus } from "../domain/registry.js";
 import { healthUrl } from "../domain/routes.js";
+import { credentialsFor } from "./door.js";
 import type { Clock } from "./ports/Clock.js";
 import type { RegistrySource } from "./ports/RegistrySource.js";
+import type { UpstreamCredentials } from "./ports/UpstreamCredentials.js";
 import type { UpstreamHttp } from "./ports/UpstreamHttp.js";
 
 /** Time allowed for each health probe unless the caller says otherwise. */
@@ -31,6 +33,8 @@ export interface AggregateHealthDeps {
   readonly upstream: UpstreamHttp;
   readonly clock: Clock;
   readonly gatewayVersion: string;
+  /** The gateway's own credentials, sent to the upstreams of apps with an `access` block. */
+  readonly credentials: UpstreamCredentials;
   readonly timeoutMs?: number;
 }
 
@@ -45,6 +49,7 @@ async function probe(deps: AggregateHealthDeps, app: AppManifest): Promise<AppHe
       headers: [
         ["accept", "application/json"],
         ["user-agent", `eisensoftware-gateway/${deps.gatewayVersion}`],
+        ...(await credentialsFor(deps.credentials, app, url)),
       ],
       body: null,
       timeoutMs: deps.timeoutMs ?? DEFAULT_HEALTH_TIMEOUT_MS,
@@ -71,6 +76,7 @@ async function probe(deps: AggregateHealthDeps, app: AppManifest): Promise<AppHe
 
 /**
  * Use case: probe every app's `api.baseUrl + api.healthPath` in parallel and report per app.
+ * Guarded apps' probes carry the gateway's upstream credentials (a failure to get them fails that probe).
  * A failing or slow upstream never fails the report; it is marked `ok: false`.
  * Rejects only when the registry itself is unavailable.
  */

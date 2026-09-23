@@ -1,5 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { connectionTokens, headerValue, stripHopByHop, withoutHeaders } from "../../src/domain/headers.js";
+import { bearerToken, connectionTokens, headerValue, headerValues, stripHopByHop, withoutHeaders } from "../../src/domain/headers.js";
+
+describe("bearerToken", () => {
+  it("reads the token of the first Authorization: Bearer header, scheme case-insensitive", () => {
+    expect(bearerToken([["Authorization", "Bearer abc.def.ghi"]])).toBe("abc.def.ghi");
+    expect(bearerToken([["authorization", "bearer  tok "]])).toBe("tok");
+    expect(bearerToken([["authorization", "Bearer first"], ["authorization", "Bearer second"]])).toBe("first");
+  });
+
+  it("finds nothing without a well-formed bearer credential", () => {
+    for (const value of ["", "Bearer", "Bearer ", "Basic dXNlcjpwdw==", "Bearer a b", "Token abc", "Bearerabc"]) {
+      expect(bearerToken([["authorization", value]])).toBeUndefined();
+    }
+    expect(bearerToken([])).toBeUndefined();
+  });
+
+  it("headerValues returns every value of a header, in order", () => {
+    expect(headerValues([["Cookie", "a=1"], ["x", "y"], ["cookie", "b=2"]], "cookie")).toEqual(["a=1", "b=2"]);
+  });
+});
 
 describe("stripHopByHop", () => {
   it("drops hop-by-hop, host and proxy-* headers and keeps the rest lower-cased, in order", () => {
