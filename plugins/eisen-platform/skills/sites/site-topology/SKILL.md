@@ -8,20 +8,23 @@ description: Topology (topology) on eisensoftware.com — live URLs, API base an
 
 Topology optimization and CNC outputs.
 
-Status `beta` · tags `engineering`, `python`, `cloud-run` · platform path `/topology` · routing `path-prefix`, ready: **false**.
-Routing note: Currently fronted by Hosting site topology-cnc (** → Cloud Run topology). Needs base-path support before /topology works.
+Status `beta` · tags `engineering`, `python`, `cloud-run` · platform path `/topology` · routing `path-prefix`, ready: **true**.
+Routing note: Verified 2026-09-23: revision topology-00002-juj serves / (topology-cnc.web.app) and /topology/ from one build.
 
 ## URLs
 
 | What | URL | Notes |
 |---|---|---|
-| Platform (Firebase Hosting rewrite) | https://eisensoftware.com/topology/ | not routable yet (`routing.ready` is false) — tiles link to the direct URL until the coordinator flips it |
+| Platform (Firebase Hosting rewrite) | https://eisensoftware.com/topology/ | canonical URL; the Hosting rewrite passes the full path through |
 | Direct (Cloud Run `topology`, us-central1, project `researcher-455022`) | https://topology-382031913173.us-central1.run.app | always reachable; bypasses the platform host |
 | Alternate | https://topology-cnc.web.app | secondary host recorded in the registry |
 
 ## API
 
-No `api` block in the registry: the gateway does not front this app, `/api/health` reports `ok: null` for it, and the scheduled deployment sync cannot read its running version. Add `api.baseUrl` and `api.healthPath` when the app exposes an HTTP API (site-plugin rule 4).
+- Base `https://topology-382031913173.us-central1.run.app/topology/api` · health `/health` → https://topology-382031913173.us-central1.run.app/topology/api/health
+- Auth `none` — No authentication: every endpoint answers anonymous requests.
+- Gateway route `https://eisensoftware.com/api/topology/` forwards to the base above with the prefix stripped; `https://eisensoftware.com/api/health` includes this app in its fan-out.
+- API description: `https://topology-382031913173.us-central1.run.app/topology/openapi.json` in the app repository.
 
 ## Repository and deployment
 
@@ -32,8 +35,9 @@ No `api` block in the registry: the gateway does not front this app, `/api/healt
 ## Smoke tests
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' https://topology-382031913173.us-central1.run.app/   # direct host → 200
-# https://eisensoftware.com/topology/ is expected to fail until routing.ready is true; test the direct host only
+curl -sS -o /dev/null -w '%{http_code}\n' https://topology-382031913173.us-central1.run.app/topology/   # direct host → 200
+curl -sS https://topology-382031913173.us-central1.run.app/topology/api/health   # health → 200 {"status":"ok","app":"topology","version":…,"commit":…,"deployedAt":…}
+curl -sS -o /dev/null -w '%{http_code}\n' https://eisensoftware.com/topology/   # through the platform → 200
 ```
 
 ## How to interact
