@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { invokedDirectly } from "./lib/entry.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const FIREBASE_PATH = join(root, "firebase.json");
@@ -114,7 +115,7 @@ function main(argv) {
   return 0;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (invokedDirectly(import.meta.url)) {
   // process.exitCode rather than process.exit(): stdout always flushes, and Node 24 on macOS has been
   // seen to segfault intermittently inside process.exit() after the output was already written.
   try {

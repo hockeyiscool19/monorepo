@@ -27,7 +27,7 @@ Routing note: Verified 2026-09-23 through the Hosting rewrite: HTML, /healthconn
 ## Repository and deployment
 
 - Repository https://github.com/hockeyiscool19/garmin (branch `main`) · local checkout `~/projects/healthconnect`
-- Deployed version `0.1.0`, by `manual` — no CI receipt yet: neither the scheduled health sync nor a `register-app` call has recorded a deploy (site-plugin rule 6)
+- Deployed version `0.0.0+sha.9342e6cec23b`, sha `9342e6cec23bab242048b3e54a7da1e1c89ed9d2`, at 2026-09-23T15:52:54Z, by `ci`
 - Service: `gcloud run services describe jordan-lifts --project researcher-455022 --region us-central1 --format 'value(status.latestReadyRevisionName,status.url)'`
 
 ## Smoke tests

@@ -55,6 +55,9 @@ jobs:
             git reset --quiet --hard origin/main
             node scripts/register-deployment.mjs --payload "$PAYLOAD"
             node scripts/validate-registry.mjs
+            # The generated site-<id> skills render each app's deployment block; keep them in the same commit,
+            # or the next human push fails CI's freshness check.
+            node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs
             if git diff --quiet -- registry/registry.json; then
               echo "registry already records this deployment; nothing to commit"
               { echo "changed=false"; echo "sha=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"
@@ -63,7 +66,7 @@ jobs:
             id="$(jq -r '.id' <<< "$PAYLOAD")"
             version="$(jq -r '.version' <<< "$PAYLOAD")"
             sha7="$(jq -r '.sha[0:7]' <<< "$PAYLOAD")"
-            git add registry/registry.json
+            git add registry/registry.json plugins/eisen-platform/skills/sites
             git commit --quiet -m "Record ${id} deployment ${version} (${sha7})"
             if git push origin HEAD:main; then
               { echo "changed=true"; echo "sha=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"

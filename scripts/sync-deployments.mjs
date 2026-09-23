@@ -21,8 +21,8 @@
 // process.exit(): Node 24 on macOS has been seen to segfault inside it.
 
 import { writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { DEFAULT_REGISTRY, checkImageTag, checkSha, checkVersion, isObject, isoSeconds, readRegistry, serialize, show } from "./lib/registry-io.mjs";
+import { invokedDirectly } from "./lib/entry.mjs";
 
 export const TIMEOUT_MS = 10_000;
 export const RETRY_DELAY_MS = 3_000;
@@ -159,7 +159,7 @@ export async function main(argv, { log = console.log, ...options } = {}) {
   return 0;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+if (invokedDirectly(import.meta.url)) {
   main(process.argv.slice(2)).then(
     (code) => {
       process.exitCode = code;

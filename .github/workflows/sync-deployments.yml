@@ -56,12 +56,15 @@ jobs:
             git reset --quiet --hard origin/main
             node scripts/sync-deployments.mjs | tee "$report"
             node scripts/validate-registry.mjs
+            # The generated site-<id> skills render each app's deployment block; keep them in the same commit,
+            # or the next human push fails CI's freshness check.
+            node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs
             if git diff --quiet -- registry/registry.json; then
               echo "every app is unchanged or skipped; nothing to commit"
               { echo "changed=false"; echo "sha=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"
               exit 0
             fi
-            git add registry/registry.json
+            git add registry/registry.json plugins/eisen-platform/skills/sites
             git commit --quiet -m "Sync deployments from live health endpoints" -m "$(grep ' → ' "$report" || true)"
             if git push origin HEAD:main; then
               { echo "changed=true"; echo "sha=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"

@@ -29,7 +29,7 @@ Routing note: Verified 2026-09-23: revision topology-00002-juj serves / (topolog
 ## Repository and deployment
 
 - Repository https://github.com/hockeyiscool19/topology (branch `main`) · local checkout `~/projects/topology`
-- Deployed version `0.1.0`, by `manual` — no CI receipt yet: neither the scheduled health sync nor a `register-app` call has recorded a deploy (site-plugin rule 6)
+- Deployed version `0.0.0+sha.a8bf0ec6299c`, sha `a8bf0ec6299c41da133bcca4ba7fd5222acbcd1f`, at 2026-09-23T15:48:15Z, by `ci`
 - Service: `gcloud run services describe topology --project researcher-455022 --region us-central1 --format 'value(status.latestReadyRevisionName,status.url)'`
 
 ## Smoke tests

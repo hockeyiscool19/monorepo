@@ -8,19 +8,19 @@ description: Vale (vale) on eisensoftware.com — live URLs, API base and health
 
 Health, happiness, and virtue: habits, diet, biodata, labs.
 
-Status `live` · tags `health`, `next.js`, `cloud-run` · platform path `/vale` · routing `path-prefix`, ready: **false**.
-Routing note: Next.js needs basePath '/vale' (Phase 4). Until then the tile links to web.url.
+Status `live` · tags `health`, `next.js`, `cloud-run` · platform path `/vale` · routing `path-prefix`, ready: **true**.
+Routing note: Verified 2026-09-23 (vale-00003-fax): /vale through Hosting, root kept on run.app. Kroger sign-in via the platform needs the /vale callbacks registered at Kroger.
 
 ## URLs
 
 | What | URL | Notes |
 |---|---|---|
-| Platform (Firebase Hosting rewrite) | https://eisensoftware.com/vale/ | not routable yet (`routing.ready` is false) — tiles link to the direct URL until the coordinator flips it |
+| Platform (Firebase Hosting rewrite) | https://eisensoftware.com/vale/ | canonical URL; the Hosting rewrite passes the full path through |
 | Direct (Cloud Run `vale`, us-central1, project `researcher-455022`) | https://vale-382031913173.us-central1.run.app | always reachable; bypasses the platform host |
 
 ## API
 
-- Base `https://vale-382031913173.us-central1.run.app/api` · health `/grocery/health` → https://vale-382031913173.us-central1.run.app/api/grocery/health
+- Base `https://vale-382031913173.us-central1.run.app/vale/api` · health `/health` → https://vale-382031913173.us-central1.run.app/vale/api/health
 - Auth `cookie` — Browser-session auth: sign in through the browser first; with curl, reuse a saved cookie jar (`-b cookies.txt`). An unauthenticated call is redirected to sign-in or answered 401.
 - Gateway route `https://eisensoftware.com/api/vale/` forwards to the base above with the prefix stripped; `https://eisensoftware.com/api/health` includes this app in its fan-out.
 - API description: `docs/v2/diet/openapi.yaml` in the app repository.
@@ -34,9 +34,9 @@ Routing note: Next.js needs basePath '/vale' (Phase 4). Until then the tile link
 ## Smoke tests
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' https://vale-382031913173.us-central1.run.app/   # direct host → 200
-curl -sS https://vale-382031913173.us-central1.run.app/api/grocery/health   # health → 200 {"status":"ok","app":"vale","version":…,"commit":…,"deployedAt":…}
-# https://eisensoftware.com/vale/ is expected to fail until routing.ready is true; test the direct host only
+curl -sS -o /dev/null -w '%{http_code}\n' https://vale-382031913173.us-central1.run.app/vale/   # direct host → 200
+curl -sS https://vale-382031913173.us-central1.run.app/vale/api/health   # health → 200 {"status":"ok","app":"vale","version":…,"commit":…,"deployedAt":…}
+curl -sS -o /dev/null -w '%{http_code}\n' https://eisensoftware.com/vale/   # through the platform → 200
 ```
 
 ## How to interact
