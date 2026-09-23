@@ -1,0 +1,184 @@
+/* ui-style-dense — design-token contract v1.1.
+   Compact, neutral, keyboard-first: cool greys, one saturated blue accent, 13px body,
+   tabular numerals, 1px borders where other styles use shadows, motion ≤ 120ms.
+   Assigns every name in design-tokens/tokens.css for light and dark. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  color-scheme: light;
+
+  /* color: surfaces — a cool grey ramp; panels sit on bg, separated by hairlines */
+  --color-bg: #f5f6f8;
+  --color-bg-elevated: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-hover: #eef0f3;
+  --color-border: #dde1e7;
+  --color-border-strong: #7c8594;
+
+  /* color: text */
+  --color-text: #15181e;
+  --color-text-muted: #5a6473;
+  --color-text-inverse: #ffffff;
+
+  /* color: accent — the only saturated colour: primary action, selection, focus */
+  --color-accent: #2457e5;
+  --color-accent-hover: #1a48c4;
+  --color-on-accent: #ffffff;
+  --color-accent-soft: #e6edfc;
+  --color-on-accent-soft: #1a48c4;
+
+  /* color: semantic — strong foregrounds and the quiet tints that carry badges and alerts */
+  --color-success: #1a7a44;
+  --color-warning: #8f5a00;
+  --color-danger: #c0261c;
+  --color-info: #1d5fd0;
+  --color-success-soft: #e4f5ec;
+  --color-warning-soft: #fbefd6;
+  --color-danger-soft: #fbe4e2;
+  --color-info-soft: #e1ebfa;
+  --color-focus: #2457e5;
+
+  /* type: Inter (drawn for 13px UI, has tabular figures), JetBrains Mono for ids and versions */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-display: var(--font-sans);
+  --text-xs: 0.6875rem;  /* 11px  badges, footers, keycaps */
+  --text-sm: 0.75rem;    /* 12px  secondary text, table headers */
+  --text-md: 0.8125rem;  /* 13px  body (14px on touch widths, below) */
+  --text-lg: 0.875rem;   /* 14px  section titles */
+  --text-xl: 1rem;       /* 16px */
+  --text-2xl: 1.25rem;   /* 20px  page title */
+  --text-3xl: 1.5rem;    /* 24px  the largest number on a dashboard */
+  --leading-tight: 1.25;
+  --leading-normal: 1.45;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 600;    /* hierarchy comes from weight, so bold stops at 600 */
+
+  /* space: the 4-pt ramp shifted one step tighter than neutral; --space-1 is the 2px half step */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+
+  /* shape and control size: near-square; 32px controls (44px on touch widths, below) */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-full: 9999px;
+  --control-height: 32px;
+
+  /* elevation: borders do this job; shadows are for popovers, menus and dialogs only */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 2px 6px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 6px 16px rgb(0 0 0 / 0.1);
+
+  /* motion: instant — nothing over 120ms */
+  --duration-fast: 60ms;
+  --duration-base: 100ms;
+  --duration-slow: 120ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.1, 0, 0, 1);
+
+  /* layout: panes fill wide screens; a tight gutter */
+  --content-max: 1440px;
+  --gutter: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #0e1117;
+    --color-bg-elevated: #161a22;
+    --color-surface: #161a22;
+    --color-surface-hover: #1d222c;
+    --color-border: #262c37;
+    --color-border-strong: #5d6774;
+    --color-text: #e6e9ee;
+    --color-text-muted: #9aa4b2;
+    --color-text-inverse: #0e1117;
+    --color-accent: #6d9bff;
+    --color-accent-hover: #8ab0ff;
+    --color-on-accent: #08173a;
+    --color-accent-soft: #182848;
+    --color-on-accent-soft: #b3c6ff;
+    --color-success: #4fcf84;
+    --color-warning: #f0b445;
+    --color-danger: #ff7b72;
+    --color-info: #6cb0ff;
+    --color-success-soft: #12301f;
+    --color-warning-soft: #33260b;
+    --color-danger-soft: #3a1a19;
+    --color-info-soft: #132740;
+    --color-focus: #8fb2ff;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 2px 6px rgb(0 0 0 / 0.55);
+    --shadow-lg: 0 6px 16px rgb(0 0 0 / 0.6);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #0e1117;
+  --color-bg-elevated: #161a22;
+  --color-surface: #161a22;
+  --color-surface-hover: #1d222c;
+  --color-border: #262c37;
+  --color-border-strong: #5d6774;
+  --color-text: #e6e9ee;
+  --color-text-muted: #9aa4b2;
+  --color-text-inverse: #0e1117;
+  --color-accent: #6d9bff;
+  --color-accent-hover: #8ab0ff;
+  --color-on-accent: #08173a;
+  --color-accent-soft: #182848;
+  --color-on-accent-soft: #b3c6ff;
+  --color-success: #4fcf84;
+  --color-warning: #f0b445;
+  --color-danger: #ff7b72;
+  --color-info: #6cb0ff;
+  --color-success-soft: #12301f;
+  --color-warning-soft: #33260b;
+  --color-danger-soft: #3a1a19;
+  --color-info-soft: #132740;
+  --color-focus: #8fb2ff;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 2px 6px rgb(0 0 0 / 0.55);
+  --shadow-lg: 0 6px 16px rgb(0 0 0 / 0.6);
+}
+
+/* touch widths read at 14px and get 44px controls; the rest of the scale is unchanged */
+@media (max-width: 767px) {
+  :root {
+    --text-md: 0.875rem;
+    --text-lg: 0.9375rem;
+    --control-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
