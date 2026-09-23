@@ -1,0 +1,196 @@
+/* Base, page bands, skip link, header (wordmark, nav, theme toggle) and footer. */
+
+:root {
+  --x-target-min: 2.75rem; /* 44px at the default font size: the minimum pointer/keyboard target */
+  --x-line: 1px;           /* hairline border width */
+}
+
+/* ---- base ------------------------------------------------------------------------------ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+}
+
+/* Full-bleed bands whose content is centred at --content-max. */
+.site-header,
+.site-footer,
+main > section {
+  padding-inline: max(var(--gutter), calc((100% - var(--content-max)) / 2));
+}
+
+/* ---- skip link ------------------------------------------------------------------------- */
+
+.skip-link {
+  position: absolute;
+  top: var(--space-2);
+  inset-inline-start: var(--gutter);
+  z-index: 10;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  transform: translateY(-250%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* ---- header ---------------------------------------------------------------------------- */
+
+.site-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding-block: var(--space-3);
+  border-bottom: var(--x-line) solid var(--color-border);
+  background: var(--color-bg-elevated);
+}
+
+/* Narrow: wordmark and toggle share the first row, the nav takes the second. Wide: one row. */
+.wordmark {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--x-target-min);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.site-nav {
+  grid-area: 2 / 1 / 3 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-inline: calc(-1 * var(--space-3));
+}
+
+.site-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--x-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+}
+
+.site-nav a:hover {
+  color: var(--color-text);
+  background: var(--color-surface-hover);
+}
+
+.site-nav a[aria-current="page"] {
+  color: var(--color-text);
+}
+
+.theme-toggle {
+  grid-area: 1 / 2;
+  justify-self: end;
+  min-height: var(--x-target-min);
+  padding: 0 var(--space-4);
+  border: var(--x-line) solid var(--color-border-strong);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+}
+
+.theme-toggle:hover {
+  background: var(--color-surface-hover);
+}
+
+.theme-toggle[aria-pressed="true"] {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+@media (min-width: 40em) {
+  .site-header {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .site-nav {
+    grid-area: 1 / 2;
+    justify-self: end;
+    margin-inline: 0;
+  }
+
+  .theme-toggle {
+    grid-area: 1 / 3;
+  }
+}
+
+/* ---- footer ---------------------------------------------------------------------------- */
+
+.site-footer {
+  margin-top: auto;
+  padding-block: var(--space-5);
+  border-top: var(--x-line) solid var(--color-border);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.site-footer p {
+  margin: 0;
+}
+
+.site-footer a {
+  color: inherit;
+  text-underline-offset: 0.15em;
+}
+
+.site-footer a:hover {
+  color: var(--color-text);
+}

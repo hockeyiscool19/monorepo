@@ -1,0 +1,10 @@
+/* Neutral component rules for the eisensoftware portal — the entry point behind the
+   `$style/components.css` alias in vite.config.ts. Split by component family so each file stays
+   small; a ui-style-<name>/components.css replaces the whole set. Every rule reads only the
+   design-token contract (plugins/eisen-design/skills/design-tokens/SKILL.md) plus the two private
+   tokens declared in base.css. The markup (plugins/eisen-design/mockups/reference.html) never changes.
+   Intentionally plain: nothing built on the neutral style should look finished. */
+
+@import './base.css';
+@import './apps.css';
+@import './deployments.css';

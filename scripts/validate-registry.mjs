@@ -124,7 +124,7 @@ try {
   registry = JSON.parse(readFileSync(registryPath, "utf8"));
 } catch (err) {
   console.error(`registry: cannot read ${registryPath}: ${err.message}`);
-  process.exit(1);
+  process.exitCode = 1;
 }
 
 if (!isObject(registry)) fail("registry", "top level must be an object");
@@ -155,7 +155,7 @@ else {
 if (errors.length) {
   console.error(`registry: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
-  process.exit(1);
+  process.exitCode = 1;
 }
 const ids = registry.apps.map((a) => a.id).join(", ");
 console.log(`registry: valid — platform ${registry.platform.domain}, ${registry.apps.length} app(s) (${ids})`);
