@@ -1,5 +1,6 @@
 // Self-tests for scripts/register-deployment.mjs. Run: `node --test scripts/*.test.mjs` (what ci.yml runs).
-// Every CLI case works on a temp copy of registry/registry.json, so the real registry is never touched.
+// Every CLI case works on a temp copy of scripts/fixtures/registry.sample.json (a frozen registry), so the real
+// registry is never touched and editing it never changes these tests.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
@@ -12,7 +13,7 @@ import { PayloadError, applyDeployment, validatePayload } from "./register-deplo
 const here = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(here, "register-deployment.mjs");
 const VALIDATOR = join(here, "validate-registry.mjs");
-const SOURCE = join(here, "..", "registry", "registry.json");
+const SOURCE = join(here, "fixtures", "registry.sample.json");
 const SHA = "8cc0085a1b2c3d4e5f60718293a4b5c6d7e8f901";
 const ISO_SECONDS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
 

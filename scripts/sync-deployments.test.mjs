@@ -1,7 +1,8 @@
 // Self-tests for scripts/sync-deployments.mjs. Run: `node --test scripts/*.test.mjs` (what ci.yml runs).
 // A local http.createServer stands in for the apps' health endpoints. Every case works on a temp copy of
-// registry/registry.json whose api.baseUrl values point at that server, so neither the real registry nor the network
-// is touched.
+// scripts/fixtures/registry.sample.json (a frozen registry: vale and healthconnect with an api block, topology without)
+// whose api.baseUrl values point at that server, so neither the real registry nor the network is touched, and editing
+// the real registry never changes these tests.
 import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
 import { execFile, spawnSync } from "node:child_process";
@@ -15,7 +16,7 @@ import { main, parseDeployedAt } from "./sync-deployments.mjs";
 const here = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = join(here, "sync-deployments.mjs");
 const VALIDATOR = join(here, "validate-registry.mjs");
-const SOURCE = join(here, "..", "registry", "registry.json");
+const SOURCE = join(here, "fixtures", "registry.sample.json");
 const SHA = "8cc0085a1b2c3d4e5f60718293a4b5c6d7e8f901";
 const NOW = new Date("2026-09-23T12:34:56.789Z");
 const NOW_SECONDS = "2026-09-23T12:34:56Z";

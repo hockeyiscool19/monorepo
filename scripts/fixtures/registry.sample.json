@@ -1,0 +1,142 @@
+{
+  "contractVersion": 1,
+  "platform": {
+    "domain": "eisensoftware.com",
+    "hosting": {
+      "project": "researcher-455022",
+      "site": "eisensoftware"
+    },
+    "gateway": {
+      "enabled": true,
+      "path": "/api",
+      "service": "gateway",
+      "region": "us-central1",
+      "note": "Cloud Run service gateway (image platform/gateway:sha-<12>), live since 2026-09-23; reads the published registry from eisensoftware.web.app."
+    }
+  },
+  "apps": [
+    {
+      "id": "vale",
+      "name": "Vale",
+      "description": "Health, happiness, and virtue: habits, diet, biodata, labs.",
+      "icon": "🌿",
+      "status": "live",
+      "path": "/vale",
+      "routing": {
+        "mode": "path-prefix",
+        "ready": false,
+        "note": "Next.js needs basePath '/vale' (Phase 4). Until then the tile links to web.url."
+      },
+      "web": {
+        "kind": "cloud-run",
+        "project": "researcher-455022",
+        "region": "us-central1",
+        "service": "vale",
+        "url": "https://vale-382031913173.us-central1.run.app"
+      },
+      "api": {
+        "baseUrl": "https://vale-382031913173.us-central1.run.app/api",
+        "healthPath": "/grocery/health",
+        "docs": "docs/v2/diet/openapi.yaml",
+        "auth": "cookie"
+      },
+      "repo": {
+        "github": "hockeyiscool19/healthconnect",
+        "branch": "main",
+        "localPath": "~/vale"
+      },
+      "deployment": {
+        "version": "0.1.0",
+        "sha": "",
+        "imageTag": "",
+        "deployedAt": "",
+        "deployedBy": "manual"
+      },
+      "tags": [
+        "health",
+        "next.js",
+        "cloud-run"
+      ]
+    },
+    {
+      "id": "healthconnect",
+      "name": "HealthConnect",
+      "description": "Lifts, Garmin HRV and training data in one place.",
+      "icon": "🏋️",
+      "status": "live",
+      "path": "/healthconnect",
+      "routing": {
+        "mode": "path-prefix",
+        "ready": true,
+        "note": "Verified 2026-09-23 through the Hosting rewrite: HTML, /healthconnect/assets/* and /healthconnect/health all 200. OAuth PUBLIC_URL on the service still points at the Cloud Run host (Phase 4)."
+      },
+      "web": {
+        "kind": "cloud-run",
+        "project": "researcher-455022",
+        "region": "us-central1",
+        "service": "jordan-lifts",
+        "url": "https://jordan-lifts-382031913173.us-central1.run.app"
+      },
+      "api": {
+        "baseUrl": "https://jordan-lifts-382031913173.us-central1.run.app/healthconnect",
+        "healthPath": "/health",
+        "auth": "cookie"
+      },
+      "repo": {
+        "github": "hockeyiscool19/garmin",
+        "branch": "main",
+        "localPath": "~/projects/healthconnect"
+      },
+      "deployment": {
+        "version": "0.1.0",
+        "sha": "",
+        "imageTag": "",
+        "deployedAt": "",
+        "deployedBy": "manual"
+      },
+      "tags": [
+        "health",
+        "python",
+        "cloud-run"
+      ]
+    },
+    {
+      "id": "topology",
+      "name": "Topology",
+      "description": "Topology optimization and CNC outputs.",
+      "icon": "🕸️",
+      "status": "beta",
+      "path": "/topology",
+      "routing": {
+        "mode": "path-prefix",
+        "ready": false,
+        "note": "Currently fronted by Hosting site topology-cnc (** → Cloud Run topology). Needs base-path support before /topology works."
+      },
+      "web": {
+        "kind": "cloud-run",
+        "project": "researcher-455022",
+        "region": "us-central1",
+        "service": "topology",
+        "url": "https://topology-382031913173.us-central1.run.app",
+        "altUrl": "https://topology-cnc.web.app"
+      },
+      "repo": {
+        "github": "hockeyiscool19/topology",
+        "branch": "main",
+        "localPath": "~/projects/topology"
+      },
+      "deployment": {
+        "version": "0.1.0",
+        "sha": "",
+        "imageTag": "",
+        "deployedAt": "",
+        "deployedBy": "manual"
+      },
+      "tags": [
+        "engineering",
+        "python",
+        "cloud-run"
+      ]
+    }
+  ]
+}
