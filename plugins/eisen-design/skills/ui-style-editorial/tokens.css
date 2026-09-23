@@ -1,0 +1,176 @@
+/* ui-style-editorial — design-token contract v1.
+   Ink on warm paper, one ultramarine accent, Fraunces display + Inter text, sharp corners,
+   hairline rules instead of shadows. Same names as design-tokens/tokens.css; see that SKILL.md. */
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=Inter:opsz,wght@14..32,400..700&display=swap");
+
+:root {
+  color-scheme: light;
+
+  /* color: surfaces — warm paper, hairline rules */
+  --color-bg: #f7f5f0;
+  --color-bg-elevated: #fdfcf9;
+  --color-surface: #fdfcf9;
+  --color-surface-hover: #efece5;
+  --color-border: #dedad1;
+  --color-border-strong: #807b71;
+
+  /* color: text — near-black ink */
+  --color-text: #1a1814;
+  --color-text-muted: #5f5a51;
+  --color-text-inverse: #f7f5f0;
+
+  /* color: accent — exactly one, ultramarine; links, the primary button, the live badge */
+  --color-accent: #2136d4;
+  --color-accent-hover: #1a2bad;
+  --color-on-accent: #ffffff;
+  --color-accent-soft: #e3e6f8;
+  --color-on-accent-soft: #1a2bad;
+
+  /* color: semantic — tints sit one step off paper; ink stays the text on them */
+  --color-success: #1f6f45;
+  --color-warning: #8a5a00;
+  --color-danger: #b3261e;
+  --color-info: #1d5fa0;
+  --color-success-soft: #e4eee7;
+  --color-warning-soft: #f5ecd8;
+  --color-danger-soft: #f6e3e0;
+  --color-info-soft: #e2eaf4;
+  --color-focus: #2136d4;
+
+  /* type: a display serif with character, a quiet sans for UI, mono only where it is data */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --font-display: "Fraunces", Georgia, "Iowan Old Style", "Times New Roman", serif;
+
+  /* type scale: 13 / 15 / 17 / 21 / 24, then fluid display steps 30→40 and 40→72 */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: clamp(1.875rem, 1.25rem + 1.5vw, 2.5rem);
+  --text-3xl: clamp(2.5rem, 1.5rem + 4vw, 4.5rem);
+  --leading-tight: 1.1;
+  --leading-normal: 1.55;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-bold: 700;
+
+  /* space: 4-pt grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* shape: sharp; the scale tops out at 4px */
+  --radius-sm: 0px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
+  --radius-full: 9999px;
+
+  /* elevation: near-invisible; rules and space do the separating */
+  --shadow-sm: 0 1px 0 rgb(26 24 20 / 0.05);
+  --shadow-md: 0 1px 2px rgb(26 24 20 / 0.06);
+  --shadow-lg: 0 4px 16px rgb(26 24 20 / 0.08);
+
+  /* motion: brief, nothing moves */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 280ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-emphasized: cubic-bezier(0.3, 0, 0, 1);
+
+  /* layout */
+  --content-max: 1120px;
+  --gutter: 20px;
+  --control-height: 44px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #141310;
+    --color-bg-elevated: #1c1b17;
+    --color-surface: #1c1b17;
+    --color-surface-hover: #26241f;
+    --color-border: #2f2d27;
+    --color-border-strong: #736e64;
+    --color-text: #f1eee6;
+    --color-text-muted: #aba69b;
+    --color-text-inverse: #141310;
+    --color-accent: #8fa0ff;
+    --color-accent-hover: #a9b6ff;
+    --color-on-accent: #0c1247;
+    --color-accent-soft: #1f2452;
+    --color-on-accent-soft: #bcc8ff;
+    --color-success: #6fcf97;
+    --color-warning: #e8b04a;
+    --color-danger: #ff8078;
+    --color-info: #7ab8ff;
+    --color-success-soft: #1a2a20;
+    --color-warning-soft: #2e2614;
+    --color-danger-soft: #341d1a;
+    --color-info-soft: #182433;
+    --color-focus: #a9b6ff;
+    --shadow-sm: 0 1px 0 rgb(0 0 0 / 0.3);
+    --shadow-md: 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-lg: 0 4px 16px rgb(0 0 0 / 0.4);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #141310;
+  --color-bg-elevated: #1c1b17;
+  --color-surface: #1c1b17;
+  --color-surface-hover: #26241f;
+  --color-border: #2f2d27;
+  --color-border-strong: #736e64;
+  --color-text: #f1eee6;
+  --color-text-muted: #aba69b;
+  --color-text-inverse: #141310;
+  --color-accent: #8fa0ff;
+  --color-accent-hover: #a9b6ff;
+  --color-on-accent: #0c1247;
+  --color-accent-soft: #1f2452;
+  --color-on-accent-soft: #bcc8ff;
+  --color-success: #6fcf97;
+  --color-warning: #e8b04a;
+  --color-danger: #ff8078;
+  --color-info: #7ab8ff;
+  --color-success-soft: #1a2a20;
+  --color-warning-soft: #2e2614;
+  --color-danger-soft: #341d1a;
+  --color-info-soft: #182433;
+  --color-focus: #a9b6ff;
+  --shadow-sm: 0 1px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 1px 2px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 4px 16px rgb(0 0 0 / 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+  }
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}

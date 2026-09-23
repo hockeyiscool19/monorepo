@@ -123,11 +123,12 @@ let registry;
 try {
   registry = JSON.parse(readFileSync(registryPath, "utf8"));
 } catch (err) {
-  console.error(`registry: cannot read ${registryPath}: ${err.message}`);
-  process.exitCode = 1;
+  fail("registry", `cannot read ${registryPath}: ${err.message}`);
 }
 
-if (!isObject(registry)) fail("registry", "top level must be an object");
+if (registry === undefined) {
+  // The read or parse failure is already recorded.
+} else if (!isObject(registry)) fail("registry", "top level must be an object");
 else {
   checkRequired("registry", "registry", registry, schema.required);
   checkNoExtra("registry", "registry", registry, Object.keys(schema.properties));
@@ -152,10 +153,12 @@ else {
   }
 }
 
+// process.exitCode rather than process.exit(): Node 24 on macOS has been seen to segfault inside process.exit().
 if (errors.length) {
   console.error(`registry: ${errors.length} problem(s)`);
   for (const e of errors) console.error(`  - ${e}`);
   process.exitCode = 1;
+} else {
+  const ids = registry.apps.map((a) => a.id).join(", ");
+  console.log(`registry: valid — platform ${registry.platform.domain}, ${registry.apps.length} app(s) (${ids})`);
 }
-const ids = registry.apps.map((a) => a.id).join(", ");
-console.log(`registry: valid — platform ${registry.platform.domain}, ${registry.apps.length} app(s) (${ids})`);

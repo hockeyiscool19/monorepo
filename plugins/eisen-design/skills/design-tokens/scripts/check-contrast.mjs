@@ -257,34 +257,39 @@ function checkFile(file, neutral) {
 
 // ---------- main ----------
 
-const args = process.argv.slice(2);
-let neutralPath = DEFAULT_NEUTRAL;
-const files = [];
-for (let i = 0; i < args.length; i++) {
-  if (args[i] === "--neutral") neutralPath = args[++i];
-  else if (args[i] === "-h" || args[i] === "--help") files.length = 0, (i = args.length);
-  else files.push(args[i]);
-}
-if (!files.length) {
-  console.error("usage: node check-contrast.mjs [--neutral <tokens.css>] <tokens.css> [<tokens.css> ...]");
-  process.exit(2);
-}
-let neutral;
-try {
-  neutral = pickBlocks(readFileSync(neutralPath, "utf8"));
-  if (!neutral.light || !neutral.dark) throw new Error("neutral file lacks a :root or :root[data-theme=\"dark\"] block");
-} catch (e) {
-  console.error(`error: cannot load neutral tokens from ${neutralPath}: ${e.message}`);
-  process.exit(2);
-}
-let allOk = true;
-for (const [i, file] of files.entries()) {
-  if (i) console.log("");
-  try {
-    if (!checkFile(resolve(file), neutral)) allOk = false;
-  } catch (e) {
-    console.log(`${file}\n  RESULT: FAIL — ${e.message}`);
-    allOk = false;
+/** Parse arguments, check every file, and return the exit code: 0 pass, 1 any failure, 2 usage. */
+function main(args) {
+  let neutralPath = DEFAULT_NEUTRAL;
+  const files = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--neutral") neutralPath = args[++i];
+    else if (args[i] === "-h" || args[i] === "--help") files.length = 0, (i = args.length);
+    else files.push(args[i]);
   }
+  if (!files.length) {
+    console.error("usage: node check-contrast.mjs [--neutral <tokens.css>] <tokens.css> [<tokens.css> ...]");
+    return 2;
+  }
+  let neutral;
+  try {
+    neutral = pickBlocks(readFileSync(neutralPath, "utf8"));
+    if (!neutral.light || !neutral.dark) throw new Error("neutral file lacks a :root or :root[data-theme=\"dark\"] block");
+  } catch (e) {
+    console.error(`error: cannot load neutral tokens from ${neutralPath}: ${e.message}`);
+    return 2;
+  }
+  let allOk = true;
+  for (const [i, file] of files.entries()) {
+    if (i) console.log("");
+    try {
+      if (!checkFile(resolve(file), neutral)) allOk = false;
+    } catch (e) {
+      console.log(`${file}\n  RESULT: FAIL — ${e.message}`);
+      allOk = false;
+    }
+  }
+  return allOk ? 0 : 1;
 }
-process.exit(allOk ? 0 : 1);
+
+// process.exitCode rather than process.exit(): Node 24 on macOS has been seen to segfault inside process.exit().
+process.exitCode = main(process.argv.slice(2));

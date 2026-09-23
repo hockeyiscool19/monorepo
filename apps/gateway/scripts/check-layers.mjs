@@ -99,10 +99,12 @@ const invokedDirectly = process.argv[1] !== undefined && resolve(process.argv[1]
 if (invokedDirectly) {
   const srcDir = resolve(process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), "..", "src"));
   const violations = checkLayers(srcDir);
+  // process.exitCode rather than process.exit(): Node 24 on macOS has been seen to segfault inside process.exit().
   if (violations.length > 0) {
     console.error(`layers: ${violations.length} violation(s)`);
     for (const violation of violations) console.error(`  - ${violation}`);
-    process.exit(1);
+    process.exitCode = 1;
+  } else {
+    console.log(`layers: ok (${srcDir})`);
   }
-  console.log(`layers: ok (${srcDir})`);
 }
