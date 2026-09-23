@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make check)",
+      "Bash(make check-architecture)",
+      "Bash(python3 scripts/check_architecture.py *)",
+      "Bash(python3 -m unittest *)",
+      "Bash(python3 -m pytest *)",
+      "Bash(npm run check:architecture)",
+      "Bash(npm test *)",
+      "Bash(npx depcruise *)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(wc -l *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.production)",
+      "Read(./**/*_credentials.json)",
+      "Read(./**/service-account*.json)",
+      "Read(./**/application_default_credentials.json)",
+      "Read(./**/*.pem)"
+    ]
+  }
+}

@@ -172,12 +172,12 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
 
 - [x] 2026-09-23 Recon: domain, Firebase projects/sites, Cloud Run, vale repo, autoresearcher conventions, existing skills.
 - [x] 2026-09-23 Decisions 1–4 taken by Jordan (project, routing, framework family, distribution).
-- [ ] Phase 0 — Foundation
-- [ ] Phase 1 — Portal
-- [ ] Phase 2 — Hosting + DNS
-- [ ] Phase 3 — Gateway
+- [x] 2026-09-23 Phase 0 — Foundation. Evidence: `node scripts/validate-registry.mjs` → `registry: valid — platform eisensoftware.com, 3 app(s)`; commit `1ab6929`.
+- [x] 2026-09-23 Phase 1 — Portal. Evidence: `make portal-build` exit 0, build has `index.html` + `registry.json`, 3 tiles (2 live, 1 beta), `npm run check` → 0 errors 0 warnings, `node scripts/render-firebase.mjs --check` → up to date (3 rewrites); browser check at 360/1280 light+dark, no horizontal scroll.
+- [ ] Phase 2 — Hosting + DNS. Done 2026-09-23: site `eisensoftware` created; portal deployed (`curl https://eisensoftware.web.app/` → 200, `/registry.json` served); healthconnect verified routable through the rewrite (`/healthconnect/` 200, assets 200, `/healthconnect/health` 200) and flipped to `routing.ready: true` — first tile routed through the platform. Waiting on Jordan: `./scripts/attach-domain.sh` + Cloudflare records (the attach API call is blocked for Claude by the auto-mode classifier).
+- [ ] Phase 3 — Gateway. Code done 2026-09-23: `make gateway-test` → `layers: ok`, `Test Files 16 passed`, `Tests 90 passed`; `docker build` ok; smoke `/api/vale/grocery/health` → 200 with `X-Upstream-App: vale`. Pending Jordan's go: create Artifact Registry repo + Cloud Run service `gateway`, then `platform.gateway.enabled: true` + render + hosting deploy.
 - [ ] Phase 4 — CI/CD sync
-- [ ] Phase 5 — Design skill base
+- [ ] Phase 5 — Design skill base. Done 2026-09-23: design-tokens (contract 1.1 + `check-contrast.mjs`, neutral PASS), information-architecture, accessibility-ada, gallery, five styles at contract 1.0 (each: mockup byte-identical, tokens complete, no color literals, contrast PASS, 360px no horizontal scroll). In progress: the five styles adopting 1.1 (checker fails them on exactly the 7 new tokens until they do).
 - [ ] Phase 6 — Architecture skill base
 - [ ] Phase 7 — Platform skills + distribution
 
@@ -193,6 +193,11 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
 - Cloud Run services answer on two hostnames: `<service>-7qzmfxv3za-uc.a.run.app` and the deterministic
   `<service>-382031913173.us-central1.run.app`. The registry uses the deterministic form.
 - A fourth service, `jordan-lifts-garmin`, exists (garmin scheduled job); it is not an app and is not in the registry.
+- healthconnect answers `/healthconnect` (no trailing slash) with a 307 to `http://jordan-lifts-…run.app/healthconnect/` — its own
+  host, over http. Tiles therefore link to `<path>/`; the service's `PUBLIC_URL` must become `https://eisensoftware.com/healthconnect`
+  in Phase 4 so OAuth and redirects stay on the platform domain.
+- SvelteKit's prerender crawler follows same-origin links; app paths served by Hosting rewrites need `rel="external"`.
+- The neutral `tokens.css` shipped with `--color-border-strong` at 1.6:1 against `--color-bg`; the contract asks 3:1. Fixed in the 1.1 bump.
 
 ## Decision log
 

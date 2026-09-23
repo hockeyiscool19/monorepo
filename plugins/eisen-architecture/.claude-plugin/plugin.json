@@ -1,0 +1,6 @@
+{
+  "name": "eisen-architecture",
+  "description": "House architecture standards as skills: hexagonal layout with runnable Python and TypeScript checkers, ports-and-adapters design rules with templates, and agent-friendly codebase conventions (AGENTS.md, gates, plans, worker packets).",
+  "version": "0.1.0",
+  "author": { "name": "Jordan Eisenman" }
+}

@@ -1,0 +1,55 @@
+# architecture.toml — configuration for scripts/check_architecture.py (hexagonal-architecture skill).
+#
+# Copy this file to the repository root and run `python3 scripts/check_architecture.py` from there
+# (or `--config <path> --root <dir>` from anywhere). Paths are relative to --root, which defaults to
+# the directory that holds this file. Flags add to what is here: --package, --io-module, --allow.
+#
+# The checker enforces, per package `<src>/<name>/`:
+#   layout/layer                   every module is under domain/, application/ or adapters/
+#   layout/adapter-side            adapters are under adapters/inbound/ or adapters/outbound/
+#   imports/no-adapters            domain, application and the package __init__ never import adapters
+#   imports/domain-no-application  domain never imports application
+#   imports/no-io                  domain and application never import an I/O module (list below)
+#   imports/cross-package          packages import each other only through an [[allow]] rule
+
+# One [[packages]] entry per hexagonal package. `src` is the directory that contains `<name>/`,
+# so the package lives at `<src>/<name>/{domain,application,adapters}`. A single-package repository
+# is simply `name = "app"` with `src = "src"` (the default).
+[[packages]]
+name = "core"
+src = "packages/core/src"
+
+[[packages]]
+name = "web"
+src = "packages/web/src"
+
+# Modules that domain/ and application/ may never import (prefix match on the dotted name).
+# extend = true (default) adds `modules` to the built-in list — web frameworks, HTTP clients,
+# database drivers, cloud SDKs, subprocess, socket, pandas/pyarrow/jinja2 — run with --list-io to
+# print it. extend = false replaces the built-in list with `modules`.
+[io]
+extend = true
+modules = ["stripe", "my_company.http_client"]
+
+# Cross-package imports are forbidden unless a rule matches both dotted prefixes. Depend on another
+# package's `domain` and `application.ports` only — never on its adapters or use cases, so each
+# package stays replaceable. Everything below says: web builds on core's contracts.
+[[allow]]
+importer = "web.domain"
+imported = "core.domain"
+
+[[allow]]
+importer = "web.application"
+imported = "core.domain"
+
+[[allow]]
+importer = "web.application"
+imported = "core.application.ports"
+
+[[allow]]
+importer = "web.adapters"
+imported = "core.domain"
+
+[[allow]]
+importer = "web.adapters"
+imported = "core.application.ports"
