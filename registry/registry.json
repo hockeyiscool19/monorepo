@@ -1,0 +1,122 @@
+{
+  "contractVersion": 1,
+  "platform": {
+    "domain": "eisensoftware.com",
+    "hosting": { "project": "researcher-455022", "site": "eisensoftware" },
+    "gateway": {
+      "enabled": false,
+      "path": "/api",
+      "service": "gateway",
+      "region": "us-central1",
+      "note": "Set enabled to true once the gateway Cloud Run service exists; render-firebase then emits the /api rewrite."
+    }
+  },
+  "apps": [
+    {
+      "id": "vale",
+      "name": "Vale",
+      "description": "Health, happiness, and virtue: habits, diet, biodata, labs.",
+      "icon": "🌿",
+      "status": "live",
+      "path": "/vale",
+      "routing": {
+        "mode": "path-prefix",
+        "ready": false,
+        "note": "Next.js needs basePath '/vale' (Phase 4). Until then the tile links to web.url."
+      },
+      "web": {
+        "kind": "cloud-run",
+        "project": "researcher-455022",
+        "region": "us-central1",
+        "service": "vale",
+        "url": "https://vale-382031913173.us-central1.run.app"
+      },
+      "api": {
+        "baseUrl": "https://vale-382031913173.us-central1.run.app/api",
+        "healthPath": "/grocery/health",
+        "docs": "docs/v2/diet/openapi.yaml",
+        "auth": "cookie"
+      },
+      "repo": {
+        "github": "hockeyiscool19/healthconnect",
+        "branch": "main",
+        "localPath": "~/vale"
+      },
+      "deployment": {
+        "version": "0.1.0",
+        "sha": "",
+        "imageTag": "",
+        "deployedAt": "",
+        "deployedBy": "manual"
+      },
+      "tags": ["health", "next.js", "cloud-run"]
+    },
+    {
+      "id": "healthconnect",
+      "name": "HealthConnect",
+      "description": "Lifts, Garmin HRV and training data in one place.",
+      "icon": "🏋️",
+      "status": "live",
+      "path": "/healthconnect",
+      "routing": {
+        "mode": "path-prefix",
+        "ready": false,
+        "note": "App honors BASE_PATH=/healthconnect; flip to true once the Cloud Run env is set and the rewrite is verified."
+      },
+      "web": {
+        "kind": "cloud-run",
+        "project": "researcher-455022",
+        "region": "us-central1",
+        "service": "jordan-lifts",
+        "url": "https://jordan-lifts-382031913173.us-central1.run.app"
+      },
+      "repo": {
+        "github": "hockeyiscool19/garmin",
+        "branch": "main",
+        "localPath": "~/projects/healthconnect"
+      },
+      "deployment": {
+        "version": "0.1.0",
+        "sha": "",
+        "imageTag": "",
+        "deployedAt": "",
+        "deployedBy": "manual"
+      },
+      "tags": ["health", "python", "cloud-run"]
+    },
+    {
+      "id": "topology",
+      "name": "Topology",
+      "description": "Topology optimization and CNC outputs.",
+      "icon": "🕸️",
+      "status": "beta",
+      "path": "/topology",
+      "routing": {
+        "mode": "path-prefix",
+        "ready": false,
+        "note": "Currently fronted by Hosting site topology-cnc (** → Cloud Run topology). Needs base-path support before /topology works."
+      },
+      "web": {
+        "kind": "cloud-run",
+        "project": "researcher-455022",
+        "region": "us-central1",
+        "service": "topology",
+        "url": "https://topology-382031913173.us-central1.run.app",
+        "altUrl": "https://topology-cnc.web.app"
+      },
+      "repo": {
+        "github": "hockeyiscool19/topology",
+        "branch": "main",
+        "localPath": "~/projects/topology"
+      },
+      "deployment": {
+        "version": "0.1.0",
+        "sha": "",
+        "imageTag": "",
+        "deployedAt": "",
+        "deployedBy": "manual"
+      },
+      "tags": ["engineering", "python", "cloud-run"]
+    }
+  ]
+}

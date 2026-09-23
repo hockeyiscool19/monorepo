@@ -1,0 +1,25 @@
+# dependencies and build output
+node_modules/
+build/
+dist/
+.svelte-kit/
+coverage/
+
+# environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*_credentials.json
+service-account*.json
+
+# firebase / gcloud local state
+.firebase/
+firebase-debug.log
+ui-debug.log
+
+# editors and OS
+.DS_Store
+.idea/
+.vscode/
+*.log

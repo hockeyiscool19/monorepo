@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validate registry
+        run: node scripts/validate-registry.mjs
+      - name: Render firebase.json and check it is committed
+        if: hashFiles('scripts/render-firebase.mjs') != ''
+        run: |
+          node scripts/render-firebase.mjs
+          git diff --exit-code -- firebase.json
+      - name: Build portal
+        if: hashFiles('apps/portal/package.json') != ''
+        run: make portal-build
+      - name: Test gateway
+        if: hashFiles('apps/gateway/package.json') != ''
+        run: make gateway-test

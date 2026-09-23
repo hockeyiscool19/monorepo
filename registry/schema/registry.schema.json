@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eisensoftware.com/schema/registry.schema.json",
+  "title": "Platform registry",
+  "description": "registry/registry.json: the single source of truth for the platform (domain, hosting, gateway) and every application on it. The portal tiles, firebase.json rewrites and gateway routes are all rendered from this file. The published copy at https://eisensoftware.com/registry.json is this object plus a generatedAt timestamp. Each app's `deployment` block is patched by CI when an app repo reports a deploy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "platform", "apps"],
+  "properties": {
+    "contractVersion": { "const": 1 },
+    "generatedAt": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$",
+      "description": "Only present in the published copy."
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["domain", "hosting", "gateway"],
+      "properties": {
+        "domain": { "type": "string", "pattern": "^[a-z0-9.-]+\\.[a-z]{2,}$" },
+        "hosting": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["project", "site"],
+          "properties": {
+            "project": { "type": "string", "description": "Firebase / GCP project id." },
+            "site": { "type": "string", "description": "Firebase Hosting site id that serves the apex domain." }
+          }
+        },
+        "gateway": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "path", "service", "region"],
+          "properties": {
+            "enabled": { "type": "boolean", "description": "When true, render-firebase emits the gateway rewrite." },
+            "path": { "type": "string", "pattern": "^/[a-z][a-z0-9-]*$" },
+            "service": { "type": "string", "description": "Cloud Run service id of the gateway." },
+            "region": { "type": "string" },
+            "note": { "type": "string", "maxLength": 200 }
+          }
+        }
+      }
+    },
+    "apps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/app" },
+      "description": "One entry per application. ids and paths are unique across the array (enforced by scripts/validate-registry.mjs)."
+    }
+  },
+  "$defs": {
+    "app": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description", "status", "path", "routing", "web", "repo", "deployment"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,30}$", "description": "Slug, unique across apps." },
+        "name": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 160, "description": "One sentence shown on the tile." },
+        "icon": { "type": "string", "maxLength": 8, "description": "An emoji or short glyph shown on the tile." },
+        "status": {
+          "type": "string",
+          "enum": ["live", "beta", "planned", "hidden"],
+          "description": "live and beta render as tiles; planned renders dimmed; hidden is not rendered."
+        },
+        "path": { "type": "string", "pattern": "^/[a-z][a-z0-9-]*$", "description": "Path prefix on the platform domain, unique across apps." },
+        "routing": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "ready"],
+          "properties": {
+            "mode": { "type": "string", "enum": ["path-prefix", "external"] },
+            "ready": { "type": "boolean", "description": "true once the app serves correctly under `path` through the Hosting rewrite. Until then tiles link to web.url." },
+            "note": { "type": "string", "maxLength": 200 }
+          }
+        },
+        "web": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "url"],
+          "properties": {
+            "kind": { "type": "string", "enum": ["cloud-run", "firebase-hosting", "external"] },
+            "project": { "type": "string" },
+            "region": { "type": "string" },
+            "service": { "type": "string", "description": "Cloud Run service id (kind = cloud-run). Used for the Hosting rewrite." },
+            "url": { "type": "string", "format": "uri", "pattern": "^https://" },
+            "altUrl": { "type": "string", "format": "uri", "pattern": "^https://" }
+          }
+        },
+        "api": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["baseUrl", "healthPath"],
+          "properties": {
+            "baseUrl": { "type": "string", "format": "uri", "pattern": "^https://", "description": "Upstream base the gateway forwards /api/<id>/* to." },
+            "healthPath": { "type": "string", "pattern": "^/", "description": "Appended to baseUrl for /api/health fan-out." },
+            "docs": { "type": "string", "description": "Path or URL of the API description (OpenAPI)." },
+            "auth": { "type": "string", "enum": ["none", "firebase-id-token", "cookie", "api-key"] }
+          }
+        },
+        "repo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["github", "branch"],
+          "properties": {
+            "github": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+            "branch": { "type": "string", "default": "main" },
+            "localPath": { "type": "string", "description": "Where the checkout lives on Jordan's machine (informational)." }
+          }
+        },
+        "deployment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "sha", "imageTag", "deployedAt", "deployedBy"],
+          "description": "Patched by .github/workflows/register-deployment.yml on repository_dispatch `app-deployed`.",
+          "properties": {
+            "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.-]+)?$" },
+            "sha": { "type": "string", "pattern": "^([0-9a-f]{7,40})?$" },
+            "imageTag": { "type": "string", "maxLength": 128 },
+            "deployedAt": { "type": "string", "pattern": "^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z)?$" },
+            "deployedBy": { "type": "string", "enum": ["manual", "ci"] }
+          }
+        },
+        "tags": { "type": "array", "items": { "type": "string" }, "maxItems": 8 }
+      }
+    }
+  }
+}
