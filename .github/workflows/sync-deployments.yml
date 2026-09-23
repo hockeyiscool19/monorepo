@@ -1,0 +1,103 @@
+# Pull path of the CI/CD sync: record in the registry what each app is actually running, and redeploy the platform.
+#
+# Every 30 minutes (and on demand) scripts/sync-deployments.mjs GETs each app's api.baseUrl + api.healthPath. When the
+# reported {version, commit} (platform contract v1, site-plugin skill) differs from the app's `deployment` block, that
+# block is patched (deployedBy "ci"). Apps whose health is down, not JSON, "dev" or incomplete are skipped with a
+# one-line reason and never fail the run: an app that does not serve the contract yet is simply not synced.
+# When the registry changed, it is validated, committed as github-actions[bot] and pushed to main (re-applied and
+# retried if main moved), then deploy.yml is called with that commit: a push made with GITHUB_TOKEN never triggers
+# `push` workflows. No token is needed and manual deploys are caught too; the push path (register-deployment.yml,
+# repository_dispatch with MONOREPO_DISPATCH_TOKEN) is optional and only makes the update faster.
+#
+# Manual run:  gh workflow run sync-deployments.yml -R hockeyiscool19/monorepo
+# Local check: node scripts/sync-deployments.mjs --dry-run
+# Runbook: docs/runbooks/cicd-sync.md
+name: Sync deployments
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  sync:
+    name: Read live health endpoints and patch the registry
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Same group as register-deployment.yml's register job, so the two registry writers never race.
+    concurrency:
+      group: registry-write
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+      changed: ${{ steps.commit.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Sync, validate, commit and push (retries once more on a concurrent push to main)
+        id: commit
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          report="${RUNNER_TEMP}/sync-deployments.txt"
+          for attempt in 1 2 3; do
+            git fetch --quiet origin main
+            git reset --quiet --hard origin/main
+            node scripts/sync-deployments.mjs | tee "$report"
+            node scripts/validate-registry.mjs
+            if git diff --quiet -- registry/registry.json; then
+              echo "every app is unchanged or skipped; nothing to commit"
+              { echo "changed=false"; echo "sha=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git add registry/registry.json
+            git commit --quiet -m "Sync deployments from live health endpoints" -m "$(grep ' → ' "$report" || true)"
+            if git push origin HEAD:main; then
+              { echo "changed=true"; echo "sha=$(git rev-parse HEAD)"; } >> "$GITHUB_OUTPUT"
+              echo "pushed $(git rev-parse --short HEAD): Sync deployments from live health endpoints"
+              exit 0
+            fi
+            echo "push rejected on attempt ${attempt} (main moved); re-syncing on the new main"
+          done
+          echo "::error::could not push the registry update after 3 attempts"
+          exit 1
+      - name: Summary
+        if: always()
+        env:
+          CHANGED: ${{ steps.commit.outputs.changed }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          {
+            echo "### Sync deployments"
+            echo
+            echo '```'
+            cat "${RUNNER_TEMP}/sync-deployments.txt" 2>/dev/null || echo "(the sync did not run)"
+            echo '```'
+            echo
+            echo "changed: ${CHANGED:-?} · commit: ${SHA:-?}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy platform
+    needs: sync
+    if: needs.sync.outputs.changed == 'true'
+    # No job-level concurrency here: deploy.yml declares `deploy-platform` itself, and a caller job holding the same
+    # group as the workflow it calls is cancelled by GitHub as a deadlock.
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy.yml
+    with:
+      ref: ${{ needs.sync.outputs.sha }}
+    secrets: inherit

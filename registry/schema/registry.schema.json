@@ -112,7 +112,7 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["version", "sha", "imageTag", "deployedAt", "deployedBy"],
-          "description": "Patched by .github/workflows/register-deployment.yml on repository_dispatch `app-deployed`.",
+          "description": "Written by CI only: .github/workflows/sync-deployments.yml (pulls each app's health JSON every 30 min) and .github/workflows/register-deployment.yml (repository_dispatch `app-deployed`, optional and faster).",
           "properties": {
             "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.-]+)?$" },
             "sha": { "type": "string", "pattern": "^([0-9a-f]{7,40})?$" },

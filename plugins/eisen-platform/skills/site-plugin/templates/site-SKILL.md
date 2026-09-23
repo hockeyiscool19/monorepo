@@ -39,13 +39,13 @@ Routing note: {{routingNote}}
 {{/if}}
 {{/if}}
 {{#unless hasApi}}
-No `api` block in the registry: the gateway does not front this app and `/api/health` reports `ok: null` for it. Add `api.baseUrl` and `api.healthPath` when the app exposes an HTTP API (site-plugin rule 4).
+No `api` block in the registry: the gateway does not front this app, `/api/health` reports `ok: null` for it, and the scheduled deployment sync cannot read its running version. Add `api.baseUrl` and `api.healthPath` when the app exposes an HTTP API (site-plugin rule 4).
 {{/unless}}
 
 ## Repository and deployment
 
 - Repository {{repoUrl}} (branch `{{branch}}`){{#if localPath}} · local checkout `{{localPath}}`{{/if}}
-- Deployed version `{{version}}`{{#if sha}}, sha `{{sha}}`{{/if}}{{#if imageTag}}, image tag `{{imageTag}}`{{/if}}{{#if deployedAt}}, at {{deployedAt}}{{/if}}, by `{{deployedBy}}`{{#unless sha}} — no CI receipt yet: the `register-app` step has not reported a deploy (site-plugin rule 6){{/unless}}
+- Deployed version `{{version}}`{{#if sha}}, sha `{{sha}}`{{/if}}{{#if imageTag}}, image tag `{{imageTag}}`{{/if}}{{#if deployedAt}}, at {{deployedAt}}{{/if}}, by `{{deployedBy}}`{{#unless sha}} — no CI receipt yet: neither the scheduled health sync nor a `register-app` call has recorded a deploy (site-plugin rule 6){{/unless}}
 - Service: `gcloud run services describe {{service}} --project {{project}} --region {{region}} --format 'value(status.latestReadyRevisionName,status.url)'`
 
 ## Smoke tests
@@ -53,7 +53,7 @@ No `api` block in the registry: the gateway does not front this app and `/api/he
 ```bash
 curl -sS -o /dev/null -w '%{http_code}\n' {{directSmokeUrl}}   # direct host → 200
 {{#if hasApi}}
-curl -sS {{healthUrl}}   # health → 200 JSON
+curl -sS {{healthUrl}}   # health → 200 {"status":"ok","app":"{{id}}","version":…,"commit":…,"deployedAt":…}
 {{/if}}
 {{#if routingReady}}
 curl -sS -o /dev/null -w '%{http_code}\n' {{platformUrl}}   # through the platform → 200
@@ -67,4 +67,5 @@ curl -sS -o /dev/null -w '%{http_code}\n' {{platformUrl}}   # through the platfo
 
 - {{authNote}}
 - Every path the app serves lives under `{{path}}` on both hosts (Hosting passes the full path through). Locally, run with the base path set and open `http://localhost:<port>{{path}}/`.
-- Source of truth: the `{{id}}` entry in `registry/registry.json` (URLs, status, api, repo); CI patches its `deployment` block after each production deploy. Edit the registry, then rerun `node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs`.
+- Platform contract v1 (site-plugin skill) applies: relative redirects, all browser state in one `__session` cookie with `Path={{path}}`, a health route answering `{"status","app","version","commit","deployedAt"}`, and deploys that set `APP_VERSION`, `APP_COMMIT` and `APP_DEPLOYED_AT` with `--update-env-vars`.
+- Source of truth: the `{{id}}` entry in `registry/registry.json` (URLs, status, api, repo); CI patches its `deployment` block from the version and commit the health route reports (every 30 minutes) or from a `register-app` call. Edit the registry, then rerun `node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs`.

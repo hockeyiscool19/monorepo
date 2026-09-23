@@ -52,7 +52,7 @@ a release is the tag that makes one of those commits nameable, promotable and ro
    then publish the rolled-back version to the registry so the tile tells the truth. Fix `main` afterwards with a
    forward commit and a new patch release; never rebuild an old commit as the first response.
 8. **The registry `deployment` block is CI's, not yours.** `{version, sha, imageTag, deployedAt, deployedBy}` for each app
-   is patched by the monorepo's `register-deployment.yml` when the app's workflow calls `register-app` after a successful
+   is patched by the monorepo's `sync-deployments.yml` (reads the app's health JSON every 30 min) and, faster, by `register-deployment.yml` when the app's workflow calls `register-app` after a successful
    production deploy (`repository_dispatch` `app-deployed`, payload `{id, version, sha, imageTag, url}`). Edit it by hand
    only for a manual deploy, with `deployedBy: manual`. Preview deploys never register.
 9. **CHANGELOG in Keep-a-Changelog form** (`templates/CHANGELOG.md`): changes land under `## [Unreleased]` with their PR;

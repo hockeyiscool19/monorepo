@@ -34,10 +34,19 @@ The schema is `registry/schema/registry.schema.json` (`$defs.app` describes one 
 
 ## Who updates `deployment`
 
-CI. When an app repo deploys to `main`, its workflow sends `repository_dispatch` (`app-deployed`) to this repo with
-`{id, version, sha, imageTag, url}`; `.github/workflows/register-deployment.yml` patches that entry's `deployment`
-block, commits, and redeploys the portal so the tile shows the new version. Edit it by hand only for a manual deploy,
-and set `deployedBy` to `manual` when you do.
+CI, by two paths (`docs/runbooks/cicd-sync.md`). Both patch only that block (`deployedBy: "ci"`), commit, and redeploy
+the portal so the tile shows the new version.
+
+- **Pull (always runs).** `.github/workflows/sync-deployments.yml` runs `scripts/sync-deployments.mjs` every 30 minutes
+  and on demand. It reads each app's health JSON at `api.baseUrl + api.healthPath` (platform contract v1 in the
+  site-plugin skill) and records the reported `version` and `commit` when they differ. Apps without an `api` block, or
+  whose health does not serve the contract yet, are skipped. It needs no token and catches manual deploys too.
+- **Push (optional, faster).** When an app repo deploys to `main`, its workflow sends `repository_dispatch`
+  (`app-deployed`) to this repo with `{id, version, sha, imageTag, url}`, and `.github/workflows/register-deployment.yml`
+  patches that entry right away. This needs the `MONOREPO_DISPATCH_TOKEN` secret in the app repo.
+
+Edit the block by hand only for an app the pull path cannot read, and set `deployedBy` to `manual` when you do. For an
+app on the contract, the next sync replaces a hand edit with what is actually running.
 
 ## Status values
 

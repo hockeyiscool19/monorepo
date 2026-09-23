@@ -21,12 +21,12 @@ Routing note: Currently fronted by Hosting site topology-cnc (** → Cloud Run t
 
 ## API
 
-No `api` block in the registry: the gateway does not front this app and `/api/health` reports `ok: null` for it. Add `api.baseUrl` and `api.healthPath` when the app exposes an HTTP API (site-plugin rule 4).
+No `api` block in the registry: the gateway does not front this app, `/api/health` reports `ok: null` for it, and the scheduled deployment sync cannot read its running version. Add `api.baseUrl` and `api.healthPath` when the app exposes an HTTP API (site-plugin rule 4).
 
 ## Repository and deployment
 
 - Repository https://github.com/hockeyiscool19/topology (branch `main`) · local checkout `~/projects/topology`
-- Deployed version `0.1.0`, by `manual` — no CI receipt yet: the `register-app` step has not reported a deploy (site-plugin rule 6)
+- Deployed version `0.1.0`, by `manual` — no CI receipt yet: neither the scheduled health sync nor a `register-app` call has recorded a deploy (site-plugin rule 6)
 - Service: `gcloud run services describe topology --project researcher-455022 --region us-central1 --format 'value(status.latestReadyRevisionName,status.url)'`
 
 ## Smoke tests
@@ -40,4 +40,5 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://topology-382031913173.us-centr
 
 - No authentication: every endpoint answers anonymous requests.
 - Every path the app serves lives under `/topology` on both hosts (Hosting passes the full path through). Locally, run with the base path set and open `http://localhost:<port>/topology/`.
-- Source of truth: the `topology` entry in `registry/registry.json` (URLs, status, api, repo); CI patches its `deployment` block after each production deploy. Edit the registry, then rerun `node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs`.
+- Platform contract v1 (site-plugin skill) applies: relative redirects, all browser state in one `__session` cookie with `Path=/topology`, a health route answering `{"status","app","version","commit","deployedAt"}`, and deploys that set `APP_VERSION`, `APP_COMMIT` and `APP_DEPLOYED_AT` with `--update-env-vars`.
+- Source of truth: the `topology` entry in `registry/registry.json` (URLs, status, api, repo); CI patches its `deployment` block from the version and commit the health route reports (every 30 minutes) or from a `register-app` call. Edit the registry, then rerun `node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs`.

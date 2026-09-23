@@ -98,9 +98,8 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    concurrency:
-      group: deploy-platform
-      cancel-in-progress: false
+    # No job-level concurrency: deploy.yml declares `deploy-platform` itself, and a calling job that holds the same
+    # group deadlocks — GitHub cancels the run.
     uses: ./.github/workflows/deploy.yml
     with:
       ref: ${{ needs.register.outputs.sha }}

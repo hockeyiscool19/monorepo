@@ -11,24 +11,23 @@
 // `url` is optional and, when it differs from web.url, replaces it and moves api.baseUrl to the same origin.
 // The app's `deployment` becomes {version, sha, imageTag, deployedAt: now, deployedBy: "ci"}.
 // Exit code 1 with a one-line reason on any validation failure. Never calls process.exit() (see render-firebase.mjs).
+// The version / sha / imageTag rules and the file format live in scripts/lib/registry-io.mjs, shared with the pull
+// path (scripts/sync-deployments.mjs), so both paths accept exactly the same receipts.
 
 import { readFileSync, writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_REGISTRY, checkImageTag, checkSha, checkVersion, isObject, isoSeconds, serialize, show } from "./lib/registry-io.mjs";
 
-const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const DEFAULT_REGISTRY = join(root, "registry", "registry.json");
-const schema = JSON.parse(readFileSync(join(root, "registry", "schema", "registry.schema.json"), "utf8"));
-const deploymentSchema = schema.$defs.app.properties.deployment.properties;
-
-const VERSION_RE = new RegExp(deploymentSchema.version.pattern);
-const SHA_RE = /^[0-9a-f]{7,40}$/;
-const IMAGE_TAG_MAX = deploymentSchema.imageTag.maxLength;
-const isObject = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-const show = (v) => JSON.stringify(v ?? "");
+export { serialize };
 
 /** Anything the caller got wrong. main() turns it into exit code 1 and a one-line message on stderr. */
 export class PayloadError extends Error {}
+
+/** The value of a registry-io check, or its reason as a PayloadError. */
+function must({ value, error }) {
+  if (error) throw new PayloadError(error);
+  return value;
+}
 
 /** Parse the payload text as a JSON object, or throw PayloadError. */
 export function parsePayload(text) {
@@ -53,13 +52,9 @@ export function validatePayload(payload, registry) {
     const known = registry.apps.map((a) => a?.id).filter(Boolean).join(", ");
     throw new PayloadError(`unknown app id ${show(payload.id)} (known: ${known})`);
   }
-  const version = text("version");
-  if (!VERSION_RE.test(version)) throw new PayloadError(`version ${show(payload.version)} must match ${deploymentSchema.version.pattern}`);
-  const sha = text("sha").toLowerCase();
-  if (!SHA_RE.test(sha)) throw new PayloadError(`sha ${show(payload.sha)} must be 7–40 hex characters`);
-  if (payload.imageTag != null && typeof payload.imageTag !== "string") throw new PayloadError("imageTag must be a string");
-  const imageTag = text("imageTag");
-  if (imageTag.length > IMAGE_TAG_MAX) throw new PayloadError(`imageTag is longer than ${IMAGE_TAG_MAX} characters`);
+  const version = must(checkVersion(payload.version));
+  const sha = must(checkSha(payload.sha));
+  const imageTag = must(checkImageTag(payload.imageTag));
   let url = text("url");
   if (url) {
     let parsed;
@@ -90,7 +85,7 @@ export function applyDeployment(registry, fields, now = new Date()) {
     version: fields.version,
     sha: fields.sha,
     imageTag: fields.imageTag,
-    deployedAt: now.toISOString().replace(/\.\d{3}Z$/, "Z"),
+    deployedAt: isoSeconds(now),
     deployedBy: "ci",
   };
   const changes = [];
@@ -110,9 +105,6 @@ export function applyDeployment(registry, fields, now = new Date()) {
   }
   return { registry: next, app, changes };
 }
-
-/** 2-space JSON with a trailing newline: the repository's format for registry.json. */
-export const serialize = (registry) => `${JSON.stringify(registry, null, 2)}\n`;
 
 function parseArgs(argv) {
   const opts = { payload: undefined, file: undefined, dryRun: false, registry: DEFAULT_REGISTRY };

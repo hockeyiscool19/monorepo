@@ -163,7 +163,7 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
 2. Add the DNS records Firebase prints at Cloudflare (DNS-only), or authorize the Cloudflare connector so Claude can.
 3. Confirm the existing WIF pool/service account may be reused by `hockeyiscool19/monorepo`; set the repo variables the
    bootstrap script prints.
-4. Create a fine-grained PAT (repo `monorepo`, Contents: write) and add it as secret `MONOREPO_DISPATCH_TOKEN` in the
+4. Optional (faster than the 30-minute pull sync): create a fine-grained PAT (repo `monorepo`, Contents: write) and add it as secret `MONOREPO_DISPATCH_TOKEN` in the
    vale and healthconnect repos.
 5. Review and merge the vale and healthconnect PRs (Phase 4).
 6. Pick the portal style from the five mockups (Phase 5).
@@ -180,6 +180,7 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
 - [x] 2026-09-23 Phase 5 — Design skill base. design-tokens (contract 1.1: tokens + `components.md`), information-architecture, accessibility-ada (+ axe audit script), gallery (`make gallery` → `/docs/mockups/`), and five styles (expressive, editorial, dense, brutalist, organic). Evidence: `check-contrast.mjs` on all six token files → `RESULT: PASS` ×6 (62 light / 26 dark names each); every `mockup.html` byte-identical to `mockups/reference.html`; no color literals in any `components.css`; each style checked in a browser at 360px (no page overflow) and 1280px, light and dark. Next: Jordan picks the portal style (`PORTAL_STYLE=ui-style-<name>`).
 - [ ] Phase 6 — Architecture skill base
 - [x] 2026-09-23 Phase 7 — Platform skills + distribution. `plugins/eisen-platform` (deploy-versioning, image-tagging, site-plugin + generated `sites/site-{healthconnect,topology,vale}`), `.claude-plugin/marketplace.json`, `scripts/install-host.sh`, `docs/runbooks/adopt-standards.md`. Evidence: `claude plugin validate --strict` → `Validation passed` (marketplace and plugin); local `marketplace add` + `install eisen-platform@eisensoftware` listed 6 skills, then uninstalled; host test under `/bin/bash` 3.2 → 33 links, AGENTS.md block, idempotent second run, clean `--uninstall`; `make sites-check` → up to date (now part of `make check`). Coordinator renamed generated dirs to `site-<id>` so marketplace and submodule expose the same skill name.
+- [x] 2026-09-23 CI/CD pull path — the platform reads what is running. `scripts/sync-deployments.mjs` (rules shared with `register-deployment.mjs` through `scripts/lib/registry-io.mjs`, its behaviour and tests unchanged), `.github/workflows/sync-deployments.yml` (every 30 min + `workflow_dispatch`, group `registry-write`, bot commit, reusable deploy), platform contract v1 in the site-plugin skill (site skills regenerated); `MONOREPO_DISPATCH_TOKEN` is now optional. Evidence: `node --test scripts/*.test.mjs` → 20/20 pass; live `--dry-run` → vale and healthconnect `skipped — health JSON has no version`, topology `skipped — no api block`; action-validator exit 0; commit/push retry proven against a throwaway bare remote; `make check` exit 0. Records deploys once each app serves the contract.
 
 ## Surprises & discoveries
 

@@ -28,14 +28,14 @@ Routing note: Next.js needs basePath '/vale' (Phase 4). Until then the tile link
 ## Repository and deployment
 
 - Repository https://github.com/hockeyiscool19/healthconnect (branch `main`) · local checkout `~/vale`
-- Deployed version `0.1.0`, by `manual` — no CI receipt yet: the `register-app` step has not reported a deploy (site-plugin rule 6)
+- Deployed version `0.1.0`, by `manual` — no CI receipt yet: neither the scheduled health sync nor a `register-app` call has recorded a deploy (site-plugin rule 6)
 - Service: `gcloud run services describe vale --project researcher-455022 --region us-central1 --format 'value(status.latestReadyRevisionName,status.url)'`
 
 ## Smoke tests
 
 ```bash
 curl -sS -o /dev/null -w '%{http_code}\n' https://vale-382031913173.us-central1.run.app/   # direct host → 200
-curl -sS https://vale-382031913173.us-central1.run.app/api/grocery/health   # health → 200 JSON
+curl -sS https://vale-382031913173.us-central1.run.app/api/grocery/health   # health → 200 {"status":"ok","app":"vale","version":…,"commit":…,"deployedAt":…}
 # https://eisensoftware.com/vale/ is expected to fail until routing.ready is true; test the direct host only
 ```
 
@@ -43,4 +43,5 @@ curl -sS https://vale-382031913173.us-central1.run.app/api/grocery/health   # he
 
 - Browser-session auth: sign in through the browser first; with curl, reuse a saved cookie jar (`-b cookies.txt`). An unauthenticated call is redirected to sign-in or answered 401.
 - Every path the app serves lives under `/vale` on both hosts (Hosting passes the full path through). Locally, run with the base path set and open `http://localhost:<port>/vale/`.
-- Source of truth: the `vale` entry in `registry/registry.json` (URLs, status, api, repo); CI patches its `deployment` block after each production deploy. Edit the registry, then rerun `node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs`.
+- Platform contract v1 (site-plugin skill) applies: relative redirects, all browser state in one `__session` cookie with `Path=/vale`, a health route answering `{"status","app","version","commit","deployedAt"}`, and deploys that set `APP_VERSION`, `APP_COMMIT` and `APP_DEPLOYED_AT` with `--update-env-vars`.
+- Source of truth: the `vale` entry in `registry/registry.json` (URLs, status, api, repo); CI patches its `deployment` block from the version and commit the health route reports (every 30 minutes) or from a `register-app` call. Edit the registry, then rerun `node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs`.

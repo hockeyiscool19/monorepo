@@ -27,14 +27,14 @@ Routing note: Verified 2026-09-23 through the Hosting rewrite: HTML, /healthconn
 ## Repository and deployment
 
 - Repository https://github.com/hockeyiscool19/garmin (branch `main`) · local checkout `~/projects/healthconnect`
-- Deployed version `0.1.0`, by `manual` — no CI receipt yet: the `register-app` step has not reported a deploy (site-plugin rule 6)
+- Deployed version `0.1.0`, by `manual` — no CI receipt yet: neither the scheduled health sync nor a `register-app` call has recorded a deploy (site-plugin rule 6)
 - Service: `gcloud run services describe jordan-lifts --project researcher-455022 --region us-central1 --format 'value(status.latestReadyRevisionName,status.url)'`
 
 ## Smoke tests
 
 ```bash
 curl -sS -o /dev/null -w '%{http_code}\n' https://jordan-lifts-382031913173.us-central1.run.app/healthconnect/   # direct host → 200
-curl -sS https://jordan-lifts-382031913173.us-central1.run.app/healthconnect/health   # health → 200 JSON
+curl -sS https://jordan-lifts-382031913173.us-central1.run.app/healthconnect/health   # health → 200 {"status":"ok","app":"healthconnect","version":…,"commit":…,"deployedAt":…}
 curl -sS -o /dev/null -w '%{http_code}\n' https://eisensoftware.com/healthconnect/   # through the platform → 200
 ```
 
@@ -42,4 +42,5 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://eisensoftware.com/healthconnec
 
 - Browser-session auth: sign in through the browser first; with curl, reuse a saved cookie jar (`-b cookies.txt`). An unauthenticated call is redirected to sign-in or answered 401.
 - Every path the app serves lives under `/healthconnect` on both hosts (Hosting passes the full path through). Locally, run with the base path set and open `http://localhost:<port>/healthconnect/`.
-- Source of truth: the `healthconnect` entry in `registry/registry.json` (URLs, status, api, repo); CI patches its `deployment` block after each production deploy. Edit the registry, then rerun `node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs`.
+- Platform contract v1 (site-plugin skill) applies: relative redirects, all browser state in one `__session` cookie with `Path=/healthconnect`, a health route answering `{"status","app","version","commit","deployedAt"}`, and deploys that set `APP_VERSION`, `APP_COMMIT` and `APP_DEPLOYED_AT` with `--update-env-vars`.
+- Source of truth: the `healthconnect` entry in `registry/registry.json` (URLs, status, api, repo); CI patches its `deployment` block from the version and commit the health route reports (every 30 minutes) or from a `register-app` call. Edit the registry, then rerun `node plugins/eisen-platform/skills/site-plugin/scripts/generate-site-skills.mjs`.
