@@ -62,3 +62,23 @@ export function headerValue(headers: HeaderList, name: string): string | undefin
   const wanted = name.toLowerCase();
   return headers.find(([candidate]) => candidate.toLowerCase() === wanted)?.[1];
 }
+
+/** Every value of the headers called `name` (case-insensitive), in order. */
+export function headerValues(headers: HeaderList, name: string): string[] {
+  const wanted = name.toLowerCase();
+  return headers.filter(([candidate]) => candidate.toLowerCase() === wanted).map(([, value]) => value);
+}
+
+/**
+ * Headers the gateway alone may send to a guarded app's upstream: Cloud Run reads the gateway's identity
+ * token from `x-serverless-authorization`, so a caller's own value is dropped before forwarding.
+ */
+export const GATEWAY_CREDENTIAL_HEADERS: ReadonlySet<string> = new Set(["x-serverless-authorization"]);
+
+/** The token of the first `Authorization: Bearer <token>` header (scheme case-insensitive), or undefined. */
+export function bearerToken(headers: HeaderList): string | undefined {
+  const value = headerValue(headers, "authorization");
+  if (value === undefined) return undefined;
+  const match = /^Bearer +(\S+) *$/i.exec(value.trim());
+  return match?.[1];
+}

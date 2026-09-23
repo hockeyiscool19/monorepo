@@ -6,20 +6,25 @@ import { silentLogger } from "../../../src/adapters/outbound/log/Logger.js";
 import { FakeRegistrySource } from "../../../src/adapters/outbound/registry/FakeRegistrySource.js";
 import { FakeUpstream, fakeResponse } from "../../../src/adapters/outbound/upstream/FakeUpstream.js";
 import { toPublicRegistry } from "../../../src/domain/registry.js";
+import { fakeAccess } from "../../fixtures/access.js";
 import { makeRegistry } from "../../fixtures/registry.js";
 
 const VERSION = "1.2.3";
 
 function harness(settings: Partial<Settings> = {}, registry = new FakeRegistrySource(makeRegistry())) {
   const upstream = new FakeUpstream();
+  const access = fakeAccess();
   const app = createApp({
     registry,
     upstream,
     clock: new FakeClock(),
     settings: { ...DEFAULT_SETTINGS, gatewayVersion: VERSION, ...settings },
     log: silentLogger,
+    verifier: access.verifier,
+    sealer: access.sealer,
+    credentials: access.credentials,
   });
-  return { app, upstream, registry };
+  return { app, upstream, registry, access };
 }
 
 describe("GET /api/registry", () => {
@@ -147,6 +152,29 @@ describe("ANY /api/:app/*", () => {
     const outside = await app.request("http://gw.test/api/registry");
     expect(outside.status).toBe(404);
     expect(await outside.json()).toMatchObject({ error: "not_found" });
+  });
+
+  it("forwards an unguarded app's API untouched: no token needed, no credentials, cache headers kept", async () => {
+    const { app, upstream, access } = harness();
+    upstream.reply("https://vale.example.test/api/items", 200, { ok: true }, [["cache-control", "public, max-age=60"]]);
+    const response = await app.request("http://gw.test/api/vale/items", { headers: { "x-serverless-authorization": "Bearer mine" } });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("public, max-age=60");
+    expect(upstream.requests[0]?.headers).toContainEqual(["x-serverless-authorization", "Bearer mine"]);
+    expect(access.credentials.calls).toHaveLength(0);
+    expect(access.verifier.calls).toHaveLength(0);
+  });
+});
+
+describe("paths outside the API", () => {
+  it("answer the gateway's 404 when they are no guarded app's path", async () => {
+    const { app, upstream } = harness();
+    for (const path of ["/", "/vale/", "/healthconnect/x", "/api"]) {
+      const response = await app.request(`http://gw.test${path}`);
+      expect(response.status).toBe(404);
+      expect(await response.json()).toMatchObject({ error: "not_found" });
+    }
+    expect(upstream.requests).toHaveLength(0);
   });
 });
 

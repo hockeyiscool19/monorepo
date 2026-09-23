@@ -1,4 +1,4 @@
-import type { AppManifest, Registry } from "../../src/domain/registry.js";
+import type { AppManifest, Platform, PlatformAuth, Registry } from "../../src/domain/registry.js";
 
 /** An app entry with sensible defaults; override any field. */
 export function makeApp(overrides: Partial<AppManifest> & { readonly id: string }): AppManifest {
@@ -39,6 +39,28 @@ export const TOPOLOGY: AppManifest = makeApp({
   api: { baseUrl: "https://topology.example.test/", healthPath: "/healthz" },
 });
 
+/** The fixture platform: `example.test`, gateway at `/api`, no sign-in. */
+export const PLATFORM: Platform = {
+  domain: "example.test",
+  hosting: { project: "proj", site: "site" },
+  gateway: { enabled: true, path: "/api", service: "gateway", region: "us-central1" },
+};
+
+/** Platform sign-in: project `demo-eisen`, 12-hour sessions, groups `owner` and `vale`. */
+export const PLATFORM_AUTH: PlatformAuth = {
+  enabled: true,
+  provider: "firebase",
+  projectId: "demo-eisen",
+  sessionHours: 12,
+  groups: [
+    { id: "owner", name: "Owner", emblem: "O", description: "Every gate." },
+    { id: "vale", name: "Vale Circle", emblem: "V", description: "The Vale gate." },
+  ],
+};
+
+/** VALE behind the door: only groups `owner` and `vale` pass. */
+export const GUARDED_VALE: AppManifest = { ...VALE, access: { groups: ["owner", "vale"] } };
+
 /** A registry with the three fixture apps and a platform block for `example.test`. */
 export function makeRegistry(
   apps: readonly AppManifest[] = [VALE, HEALTHCONNECT, TOPOLOGY],
@@ -47,17 +69,26 @@ export function makeRegistry(
   return {
     contractVersion: 1,
     generatedAt: "2026-09-23T00:00:00Z",
-    platform: {
-      domain: "example.test",
-      hosting: { project: "proj", site: "site" },
-      gateway: { enabled: true, path: "/api", service: "gateway", region: "us-central1" },
-    },
+    platform: PLATFORM,
     apps,
     ...overrides,
   };
 }
 
+/** A registry with platform sign-in (`auth`) where Vale is guarded (GUARDED_VALE, HEALTHCONNECT, TOPOLOGY). */
+export function makeGuardedRegistry(
+  apps: readonly AppManifest[] = [GUARDED_VALE, HEALTHCONNECT, TOPOLOGY],
+  auth: PlatformAuth = PLATFORM_AUTH,
+): Registry {
+  return makeRegistry(apps, { platform: { ...PLATFORM, auth } });
+}
+
 /** `makeRegistry()` as plain JSON, the way a published registry.json parses. */
 export function registryDocument(): Record<string, unknown> {
   return JSON.parse(JSON.stringify(makeRegistry())) as Record<string, unknown>;
+}
+
+/** `makeGuardedRegistry()` as plain JSON. */
+export function guardedRegistryDocument(): Record<string, unknown> {
+  return JSON.parse(JSON.stringify(makeGuardedRegistry())) as Record<string, unknown>;
 }

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { aggregateHealth } from "../../src/application/aggregateHealth.js";
 import { FakeClock } from "../../src/adapters/outbound/clock/FakeClock.js";
+import { FAKE_CREDENTIAL, FakeUpstreamCredentials } from "../../src/adapters/outbound/credentials/FakeUpstreamCredentials.js";
 import { FakeRegistrySource } from "../../src/adapters/outbound/registry/FakeRegistrySource.js";
 import { FakeUpstream, fakeResponse } from "../../src/adapters/outbound/upstream/FakeUpstream.js";
-import { RegistryUnavailableError } from "../../src/domain/errors.js";
-import { makeRegistry } from "../fixtures/registry.js";
+import { RegistryUnavailableError, UpstreamError } from "../../src/domain/errors.js";
+import { makeGuardedRegistry, makeRegistry } from "../fixtures/registry.js";
 
 describe("aggregateHealth", () => {
   it("probes every app with an api, reports ok:null for the others, and survives a failing upstream", async () => {
@@ -21,6 +22,7 @@ describe("aggregateHealth", () => {
       upstream,
       clock,
       gatewayVersion: "1.2.3",
+      credentials: new FakeUpstreamCredentials(),
       timeoutMs: 3000,
     });
 
@@ -46,6 +48,7 @@ describe("aggregateHealth", () => {
       upstream,
       clock: new FakeClock(),
       gatewayVersion: "dev",
+      credentials: new FakeUpstreamCredentials(),
     });
     expect(report.apps.map((app) => [app.id, app.ok, app.httpStatus])).toEqual([
       ["vale", false, 503],
@@ -55,9 +58,47 @@ describe("aggregateHealth", () => {
     expect(upstream.requests[0]?.timeoutMs).toBe(3000);
   });
 
+  it("sends the gateway's credentials to guarded apps' health only", async () => {
+    const credentials = new FakeUpstreamCredentials();
+    const upstream = new FakeUpstream()
+      .reply("https://vale.example.test/api/grocery/health", 200)
+      .reply("https://topology.example.test/healthz", 200);
+    await aggregateHealth({
+      registry: new FakeRegistrySource(makeGuardedRegistry()),
+      upstream,
+      clock: new FakeClock(),
+      gatewayVersion: "dev",
+      credentials,
+    });
+    const byUrl = new Map(upstream.requests.map((request) => [request.url, request.headers]));
+    expect(byUrl.get("https://vale.example.test/api/grocery/health")).toContainEqual(FAKE_CREDENTIAL);
+    expect(byUrl.get("https://topology.example.test/healthz")).not.toContainEqual(FAKE_CREDENTIAL);
+    expect(credentials.calls).toEqual([{ url: "https://vale.example.test/api/grocery/health" }]);
+  });
+
+  it("marks a guarded app down when its credentials cannot be obtained, without probing it", async () => {
+    const credentials = new FakeUpstreamCredentials().fail(new UpstreamError("http://metadata.test/identity", "timeout"));
+    const upstream = new FakeUpstream().reply("https://topology.example.test/healthz", 200);
+    const report = await aggregateHealth({
+      registry: new FakeRegistrySource(makeGuardedRegistry()),
+      upstream,
+      clock: new FakeClock(),
+      gatewayVersion: "dev",
+      credentials,
+    });
+    expect(report.apps[0]).toMatchObject({ id: "vale", ok: false, error: "timeout" });
+    expect(upstream.requests.map((request) => request.url)).toEqual(["https://topology.example.test/healthz"]);
+  });
+
   it("rejects only when the registry itself is unavailable", async () => {
     await expect(
-      aggregateHealth({ registry: FakeRegistrySource.failing(), upstream: new FakeUpstream(), clock: new FakeClock(), gatewayVersion: "dev" }),
+      aggregateHealth({
+        registry: FakeRegistrySource.failing(),
+        upstream: new FakeUpstream(),
+        clock: new FakeClock(),
+        gatewayVersion: "dev",
+        credentials: new FakeUpstreamCredentials(),
+      }),
     ).rejects.toBeInstanceOf(RegistryUnavailableError);
   });
 });

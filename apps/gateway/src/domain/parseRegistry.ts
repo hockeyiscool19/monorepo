@@ -1,6 +1,7 @@
 /**
  * Validation of a registry document (contract version 1). The checks cover what the gateway
- * relies on: the envelope, every field it types, https upstreams, unique and unreserved ids.
+ * relies on: the envelope, every field it types, https upstreams, unique and unreserved ids, and
+ * every rule the door's security depends on (sign-in project, session length, declared groups).
  * Cosmetic rules the portal enforces (name length, semver pattern) are deliberately not
  * repeated here so a cosmetic slip in a published registry does not take the gateway down.
  */
@@ -9,6 +10,7 @@ import { InvalidRegistryError } from "./errors.js";
 import {
   API_AUTHS,
   APP_STATUSES,
+  AUTH_PROVIDERS,
   CONTRACT_VERSION,
   DEPLOYED_BY,
   ROUTING_MODES,
@@ -27,8 +29,11 @@ const PATH_PATTERN = /^\/[a-z][a-z0-9-]*$/;
 const HTTPS_PATTERN = /^https:\/\/\S+$/;
 const LEADING_SLASH = /^\//;
 const ISO_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$/;
-/** Ids that would shadow the gateway's own routes. */
-const RESERVED_IDS: ReadonlySet<string> = new Set(["registry", "health"]);
+const PROJECT_ID_PATTERN = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
+/** Ids that would shadow the gateway's own routes (`<prefix>/registry`, `/health`, `/auth/*`). */
+const RESERVED_IDS: ReadonlySet<string> = new Set(["registry", "health", "auth"]);
+/** Bounds of `platform.auth.sessionHours`. */
+const SESSION_HOURS = { min: 1, max: 168 } as const;
 
 /** Values the caller supplies when the document lacks them: a local `registry.json` has no `generatedAt`. */
 export interface ParseRegistryOptions {
@@ -84,6 +89,13 @@ function checkOptionalStringArray(rec: Rec, key: string, where: string, problems
   if (value === undefined) return;
   if (!Array.isArray(value) || !value.every((item) => typeof item === "string")) {
     problems.push(`${where}.${key} must be an array of strings`);
+  }
+}
+
+function checkInteger(rec: Rec, key: string, where: string, problems: Problems, bounds: { min: number; max: number }): void {
+  const value = rec[key];
+  if (typeof value !== "number" || !Number.isInteger(value) || value < bounds.min || value > bounds.max) {
+    problems.push(`${where}.${key} must be an integer from ${bounds.min} to ${bounds.max}`);
   }
 }
 
@@ -144,6 +156,47 @@ const checkGateway: Check = (rec, where, problems) => {
   checkString(rec, "note", where, problems, { optional: true });
 };
 
+const checkGroupProfile: Check = (rec, where, problems) => {
+  checkString(rec, "id", where, problems, { pattern: ID_PATTERN, hint: "a slug like owner" });
+  for (const key of ["name", "emblem", "description"]) checkString(rec, key, where, problems);
+};
+
+const checkAuth: Check = (rec, where, problems) => {
+  checkBoolean(rec, "enabled", where, problems);
+  checkEnum(rec, "provider", where, problems, AUTH_PROVIDERS);
+  checkString(rec, "projectId", where, problems, { pattern: PROJECT_ID_PATTERN, hint: "a Firebase project id" });
+  checkInteger(rec, "sessionHours", where, problems, SESSION_HOURS);
+  checkString(rec, "note", where, problems, { optional: true });
+  const groups = rec["groups"];
+  if (!Array.isArray(groups)) {
+    problems.push(`${where}.groups must be an array`);
+    return;
+  }
+  const seen = new Set<string>();
+  groups.forEach((group: unknown, index) => {
+    const at = `${where}.groups[${index}]`;
+    if (!isRecord(group)) {
+      problems.push(`${at} must be an object`);
+      return;
+    }
+    checkGroupProfile(group, at, problems);
+    const id = group["id"];
+    if (typeof id !== "string") return;
+    if (seen.has(id)) problems.push(`${where}.groups: id "${id}" is used twice`);
+    seen.add(id);
+  });
+};
+
+const checkAccess: Check = (rec, where, problems) => {
+  const groups = rec["groups"];
+  if (!Array.isArray(groups) || !groups.every((group) => typeof group === "string" && ID_PATTERN.test(group))) {
+    problems.push(`${where}.groups must be an array of group ids`);
+  } else if (new Set(groups).size !== groups.length) {
+    problems.push(`${where}.groups must not name a group twice`);
+  }
+  checkString(rec, "note", where, problems, { optional: true });
+};
+
 /**
  * Type guard for one app entry. Records every violation under `where` and returns true only when
  * it found none, so the narrowed value is safe to use as an AppManifest.
@@ -163,6 +216,7 @@ export function isAppManifest(value: unknown, where: string, problems: Problems)
   checkChild(value, "routing", where, problems, false, checkRouting);
   checkChild(value, "web", where, problems, false, checkWeb);
   checkChild(value, "api", where, problems, true, checkApi);
+  checkChild(value, "access", where, problems, true, checkAccess);
   checkChild(value, "repo", where, problems, true, checkRepo);   // optional: published copies omit it
   checkChild(value, "deployment", where, problems, false, checkDeployment);
   checkOptionalStringArray(value, "tags", where, problems);
@@ -179,6 +233,7 @@ export function isPlatform(value: unknown, where: string, problems: Problems): v
   checkString(value, "domain", where, problems, { pattern: /^[a-z0-9.-]+\.[a-z]{2,}$/, hint: "a bare domain name" });
   checkChild(value, "hosting", where, problems, true, checkHosting);
   checkChild(value, "gateway", where, problems, true, checkGateway);
+  checkChild(value, "auth", where, problems, true, checkAuth);
   return problems.length === before;
 }
 
@@ -191,6 +246,25 @@ function checkUniqueness(apps: readonly AppManifest[], problems: Problems): void
     if (seenPaths.has(app.path)) problems.push(`apps: path "${app.path}" is used twice`);
     seenIds.add(app.id);
     seenPaths.add(app.path);
+  }
+}
+
+/**
+ * Rules that span the platform and the apps. An app with `access` needs the platform's sign-in, must be a
+ * Cloud Run service (the door forwards to `web.url`), and may name only groups declared in platform.auth.
+ */
+function checkAccessRules(platform: Platform | undefined, apps: readonly AppManifest[], problems: Problems): void {
+  const auth = platform?.auth;
+  const declared = new Set((auth?.groups ?? []).map((group) => group.id));
+  for (const app of apps) {
+    if (app.access === undefined) continue;
+    const where = `apps: "${app.id}" access`;
+    if (auth === undefined) problems.push(`${where} requires platform.auth`);
+    if (app.web.kind !== "cloud-run") problems.push(`${where} requires web.kind cloud-run`);
+    if (auth === undefined) continue;
+    for (const group of app.access.groups) {
+      if (!declared.has(group)) problems.push(`${where} names group "${group}", which platform.auth.groups does not declare`);
+    }
   }
 }
 
@@ -225,6 +299,8 @@ export function parseRegistry(input: unknown, options: ParseRegistryOptions = {}
     });
   }
   checkUniqueness(apps, problems);
+  // An invalid platform block has already been reported; the cross-checks need a valid (or absent) one.
+  if (rawPlatform === undefined || platform !== undefined) checkAccessRules(platform, apps, problems);
 
   if (generatedAt === undefined) problems.push("registry.generatedAt is required (published copies carry it)");
   if (generatedAt === undefined || problems.length > 0) throw new InvalidRegistryError(problems);
