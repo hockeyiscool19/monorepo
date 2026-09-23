@@ -182,6 +182,8 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
 - [x] 2026-09-23 Phase 7 — Platform skills + distribution. `plugins/eisen-platform` (deploy-versioning, image-tagging, site-plugin + generated `sites/site-{healthconnect,topology,vale}`), `.claude-plugin/marketplace.json`, `scripts/install-host.sh`, `docs/runbooks/adopt-standards.md`. Evidence: `claude plugin validate --strict` → `Validation passed` (marketplace and plugin); local `marketplace add` + `install eisen-platform@eisensoftware` listed 6 skills, then uninstalled; host test under `/bin/bash` 3.2 → 33 links, AGENTS.md block, idempotent second run, clean `--uninstall`; `make sites-check` → up to date (now part of `make check`). Coordinator renamed generated dirs to `site-<id>` so marketplace and submodule expose the same skill name.
 - [x] 2026-09-23 CI/CD pull path — the platform reads what is running. `scripts/sync-deployments.mjs` (rules shared with `register-deployment.mjs` through `scripts/lib/registry-io.mjs`, its behaviour and tests unchanged), `.github/workflows/sync-deployments.yml` (every 30 min + `workflow_dispatch`, group `registry-write`, bot commit, reusable deploy), platform contract v1 in the site-plugin skill (site skills regenerated); `MONOREPO_DISPATCH_TOKEN` is now optional. Evidence: `node --test scripts/*.test.mjs` → 20/20 pass; live `--dry-run` → vale and healthconnect `skipped — health JSON has no version`, topology `skipped — no api block`; action-validator exit 0; commit/push retry proven against a throwaway bare remote; `make check` exit 0. Records deploys once each app serves the contract.
 
+- [ ] 2026-09-23 Goal: every app repo supports the platform (contract v1: base path, relative redirects, one `__session` cookie at `Path=/<id>`, health JSON with version/commit, `--update-env-vars` deploys). topology: done — PR hockeyiscool19/topology#1 merged into `modernize`, revision `topology-00002-juj` live at `/` and `/topology/`, registry `routing.ready`. healthconnect: branch `platform/eisensoftware` live as `jordan-lifts-00032-pem` (relative redirects, `__session`, health version), PR to `main` pending (opening it was blocked for Claude). vale: in progress.
+
 ## Surprises & discoveries
 
 - Vale runs on Cloud Run, not Firebase Hosting; Firebase (`holistic-habit-ai`) is sign-in only.
@@ -211,6 +213,10 @@ a host's `.claude/skills` and `.cursor/skills` and writes the AGENTS.md pointer 
   replaying that cached 404. The probe budget is 6 s because the gateway allows 3 s per cold upstream.
 - Links to rewrite-served paths (`/api/*`, app paths) need `rel="external"` or the prerender crawler fails the build on them.
 - Cold upstreams (scale-to-zero) can miss the gateway's 3 s health probe on the first call; warm probes answer in 15–50 ms.
+- Firebase Hosting forwards only the `__session` cookie to Cloud Run: healthconnect's Starlette `session` cookie and vale's
+  Kroger cookies could never reach the apps through the platform. Contract v1 makes `__session` scoped to `Path=/<id>` mandatory.
+- The Firebase CDN caches 404s from Cloud Run rewrites for 10 minutes (`max-age=600`, `x-cache: HIT`); a Hosting release purges them.
+- healthconnect has no Google login configured (`GOOGLE_CLIENT_ID`/`SECRET` unset), so its pages (body weight, brief) are public.
 
 ## Decision log
 
