@@ -181,8 +181,8 @@
       "path": "/ski",
       "routing": {
         "mode": "path-prefix",
-        "ready": false,
-        "note": "Cloud Run ski-00001-fz5 serves /ski/ and /ski/health on run.app (2026-09-24); flip after the rule 7 checks through Hosting."
+        "ready": true,
+        "note": "Verified 2026-09-24 through the Hosting rewrite (eisensoftware.web.app): /ski/, /ski/health, /ski/assets/* all 200 (ski-00002-k5c)."
       },
       "web": {
         "kind": "cloud-run",

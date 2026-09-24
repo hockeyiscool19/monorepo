@@ -258,14 +258,17 @@ Firestore, grants, IAM) are Jordan's go — `docs/runbooks/platform-auth.md`.
     dark; no page overflow at 375 px. Engine chunk 690.96 → 746.42 kB (gzip 182.06 → 201.28 kB), loaded after the title
     screen; the >500 kB chunk warning predates this change.
   - Room fix on the way: the Get-a-way postcard sat exactly on its frame's face (z-fighting); it now sits 4 mm proud.
-- [ ] 2026-09-24 New app `ski` — First Chair, a three.js ski game (Bromley, Loveland, A-Basin), from its own repo
+- [x] 2026-09-24 New app `ski` — First Chair, a three.js ski game (Bromley, Loveland, A-Basin), from its own repo
   `hockeyiscool19/first-chair` built on these standards (platform submodule + linked skills, hexagonal apps, `make
   check` gates, contract v1). Jordan's ask: "separate repo with monorepo architecture but deployed on the monorepo".
   Manual first deploy: Cloud Run `ski-00001-fz5`, image `first-chair/ski:sha-c0f7863f8975`. Registry entry (routing.ready
   false), `/ski{,/**}` rewrite, generated `site-ski`. Evidence: `curl …run.app/ski/health` → `{"status":"ok","app":"ski",
   "version":"0.0.0+sha.c0f7863f8975","commit":"c0f7863…"}`; `make check` exit 0 (portal 52 passed, gateway 223 passed);
-  `node --test scripts/*.test.mjs` → 57/57. Open: rule 7 checks through Hosting, then `routing.ready: true`; admitting
-  first-chair to the CI identity (`REPOS="hockeyiscool19/first-chair" ./scripts/bootstrap-ci-auth.sh --apply-github`).
+  `node --test scripts/*.test.mjs` → 57/57. Deploy platform run 35947032956 green; rule 7 through the Hosting rewrite
+  (`eisensoftware.web.app`, as for healthconnect — the apex still waits on Phase 2's DNS): `/ski/` 200, `/ski/health`
+  200 (`ski-00002-k5c`, 0.0.0+sha.d446edc32736), `/ski/assets/index-CMpiU1DD.js` 200 → `routing.ready: true`. Open for
+  Jordan: admit first-chair to the CI identity (`REPOS="hockeyiscool19/first-chair" ./scripts/bootstrap-ci-auth.sh
+  --apply-github`); until then its Deploy workflow skips the Cloud Run job and `make deploy` deploys from a laptop.
 
 ## Surprises & discoveries
 

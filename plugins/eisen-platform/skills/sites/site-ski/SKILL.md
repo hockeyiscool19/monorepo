@@ -8,14 +8,14 @@ description: First Chair (ski) on eisensoftware.com — live URLs, who may enter
 
 A three.js ski game at Bromley, Loveland and A-Basin: parks, pipes, moguls, cliffs, lifts and other skiers.
 
-Status `live` · tags `game`, `three.js`, `cloud-run` · platform path `/ski` · routing `path-prefix`, ready: **false**.
-Routing note: Cloud Run ski-00001-fz5 serves /ski/ and /ski/health on run.app (2026-09-24); flip after the rule 7 checks through Hosting.
+Status `live` · tags `game`, `three.js`, `cloud-run` · platform path `/ski` · routing `path-prefix`, ready: **true**.
+Routing note: Verified 2026-09-24 through the Hosting rewrite (eisensoftware.web.app): /ski/, /ski/health, /ski/assets/* all 200 (ski-00002-k5c).
 
 ## URLs
 
 | What | URL | Notes |
 |---|---|---|
-| Platform (Firebase Hosting rewrite) | https://eisensoftware.com/ski/ | not routable yet (`routing.ready` is false) — tiles link to the direct URL until the coordinator flips it |
+| Platform (Firebase Hosting rewrite) | https://eisensoftware.com/ski/ | canonical URL; the Hosting rewrite passes the full path through |
 | Direct (Cloud Run `ski`, us-central1, project `researcher-455022`) | https://ski-382031913173.us-central1.run.app | always reachable; bypasses the platform host |
 
 ## API
@@ -33,9 +33,9 @@ Routing note: Cloud Run ski-00001-fz5 serves /ski/ and /ski/health on run.app (2
 ## Smoke tests
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code}\n' https://ski-382031913173.us-central1.run.app/   # direct host → 200
+curl -sS -o /dev/null -w '%{http_code}\n' https://ski-382031913173.us-central1.run.app/ski/   # direct host → 200
 curl -sS https://ski-382031913173.us-central1.run.app/ski/health   # health → 200 {"status":"ok","app":"ski","version":…,"commit":…,"deployedAt":…}
-# https://eisensoftware.com/ski/ is expected to fail until routing.ready is true; test the direct host only
+curl -sS -o /dev/null -w '%{http_code}\n' https://eisensoftware.com/ski/   # through the platform → 200
 ```
 
 ## How to interact
