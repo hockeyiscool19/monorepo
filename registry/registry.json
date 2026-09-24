@@ -202,10 +202,10 @@
         "localPath": "~/projects/first-chair"
       },
       "deployment": {
-        "version": "0.0.0+sha.d446edc32736",
-        "sha": "d446edc327362c6d12f405dea21c3b088173ed2b",
-        "imageTag": "sha-c0f7863f8975",
-        "deployedAt": "2026-09-24T02:26:03Z",
+        "version": "0.0.0+sha.48375db1514f",
+        "sha": "48375db1514fd9999fe10ba9d07aceb447325aaf",
+        "imageTag": "sha-48375db1514f",
+        "deployedAt": "2026-09-24T02:36:57Z",
         "deployedBy": "ci"
       },
       "tags": [

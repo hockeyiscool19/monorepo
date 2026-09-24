@@ -27,7 +27,7 @@ Routing note: Verified 2026-09-24 through the Hosting rewrite (eisensoftware.web
 ## Repository and deployment
 
 - Repository https://github.com/hockeyiscool19/first-chair (branch `main`) · local checkout `~/projects/first-chair`
-- Deployed version `0.0.0+sha.d446edc32736`, sha `d446edc327362c6d12f405dea21c3b088173ed2b`, image tag `sha-c0f7863f8975`, at 2026-09-24T02:26:03Z, by `ci`
+- Deployed version `0.0.0+sha.48375db1514f`, sha `48375db1514fd9999fe10ba9d07aceb447325aaf`, image tag `sha-48375db1514f`, at 2026-09-24T02:36:57Z, by `ci`
 - Service: `gcloud run services describe ski --project researcher-455022 --region us-central1 --format 'value(status.latestReadyRevisionName,status.url)'`
 
 ## Smoke tests
