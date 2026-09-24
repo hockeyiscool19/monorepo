@@ -258,6 +258,12 @@ Firestore, grants, IAM) are Jordan's go — `docs/runbooks/platform-auth.md`.
     dark; no page overflow at 375 px. Engine chunk 690.96 → 746.42 kB (gzip 182.06 → 201.28 kB), loaded after the title
     screen; the >500 kB chunk warning predates this change.
   - Room fix on the way: the Get-a-way postcard sat exactly on its frame's face (z-fighting); it now sits 4 mm proud.
+  - Deployed on Jordan's go ("merge it to main", "push to main"): `6cb0db2` pushed (`0f58075..6cb0db2`); Deploy platform
+    run 35944104355 green (gateway image, Cloud Run, Hosting) and CI run 35944104328 green. `eisensoftware.web.app` serves
+    the same chunks as the local build (`nodes/3.D9saS5an.js` holds the tidbits, `chunks/D7b1Ilh4.js` the Heartcell and
+    the legend's plaque); `/api/health` → gateway `0.0.0+sha.6cb0db2fc4bf`, vale, healthconnect and topology ok. In the
+    browser, guarded mode, after First Chair became a fourth gate: the map lists every landmark and the Heartcell, and
+    Travel to it gives `Read · The Legend of the Panel`. The apex still waits on Phase 2's DNS.
 - [x] 2026-09-24 New app `ski` — First Chair, a three.js ski game (Bromley, Loveland, A-Basin), from its own repo
   `hockeyiscool19/first-chair` built on these standards (platform submodule + linked skills, hexagonal apps, `make
   check` gates, contract v1). Jordan's ask: "separate repo with monorepo architecture but deployed on the monorepo".
