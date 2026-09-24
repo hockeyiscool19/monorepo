@@ -171,6 +171,48 @@
         "python",
         "cloud-run"
       ]
+    },
+    {
+      "id": "ski",
+      "name": "First Chair",
+      "description": "A three.js ski game at Bromley, Loveland and A-Basin: parks, pipes, moguls, cliffs, lifts and other skiers.",
+      "icon": "⛷️",
+      "status": "live",
+      "path": "/ski",
+      "routing": {
+        "mode": "path-prefix",
+        "ready": false,
+        "note": "Cloud Run ski-00001-fz5 serves /ski/ and /ski/health on run.app (2026-09-24); flip after the rule 7 checks through Hosting."
+      },
+      "web": {
+        "kind": "cloud-run",
+        "project": "researcher-455022",
+        "region": "us-central1",
+        "service": "ski",
+        "url": "https://ski-382031913173.us-central1.run.app"
+      },
+      "api": {
+        "baseUrl": "https://ski-382031913173.us-central1.run.app/ski",
+        "healthPath": "/health",
+        "auth": "none"
+      },
+      "repo": {
+        "github": "hockeyiscool19/first-chair",
+        "branch": "main",
+        "localPath": "~/projects/first-chair"
+      },
+      "deployment": {
+        "version": "0.0.0+sha.c0f7863f8975",
+        "sha": "c0f7863f8975acd76dbfc5968402719b0c3c1a1c",
+        "imageTag": "sha-c0f7863f8975",
+        "deployedAt": "2026-09-24T02:21:06Z",
+        "deployedBy": "manual"
+      },
+      "tags": [
+        "game",
+        "three.js",
+        "cloud-run"
+      ]
     }
   ]
 }

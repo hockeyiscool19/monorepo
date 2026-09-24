@@ -66,6 +66,13 @@
         }
       },
       {
+        "source": "/ski{,/**}",
+        "run": {
+          "serviceId": "ski",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "/topology{,/**}",
         "run": {
           "serviceId": "topology",
