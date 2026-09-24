@@ -1,6 +1,7 @@
 // My Get-a-way, inside: a compact log room (6 × 5 m) with a picture window onto Colorado, the drafting
 // table under the window light, the cork board on the west wall, a wood stove, an armchair with a
-// blanket and a steaming mug, a bookshelf, skis in the corner, a Colorado pennant and a postcard by the door.
+// blanket and a steaming mug, a bookshelf, skis in the corner, a Colorado pennant and a postcard by the door —
+// and the keepsakes of the Jarl's story all round the walls (keepsakes.ts).
 
 import * as THREE from 'three';
 import { box as boxWalls, pillar, type Capsule } from '../../domain/collide';
@@ -12,6 +13,7 @@ import type { Interactable } from '../space';
 import { softDot } from '../textures/common';
 import { bookSpines, coloradoPennant, postcard, rug, wood } from '../textures/room';
 import { buildBoards, CORK, type Boards } from './board3d';
+import { buildKeepsakes } from './keepsakes';
 
 export const ROOM = { w: 6, d: 5, h: 2.8 };
 export const WINDOW = { w: 3.0, bottom: 0.85, top: 2.3 };
@@ -176,7 +178,8 @@ export function buildRoom(pixelRatio: number, castShadows: boolean): Room {
 	add(new THREE.Mesh(keep(new THREE.SphereGeometry(0.035, 10, 8)), keep(new THREE.MeshStandardMaterial({ color: STONE.gold, metalness: 0.8, roughness: 0.3 }))), 1.22, 1.0, d / 2 - 0.05);
 	const card = new THREE.Mesh(keep(new THREE.PlaneGeometry(0.52, 0.35)), keep(new THREE.MeshStandardMaterial({ map: keep(postcard()), roughness: 0.6 })));
 	card.rotation.y = Math.PI;
-	add(card, 0.3, 1.55, d / 2 - 0.015, false);
+	// A few millimetres proud of its frame, so the two never fight over the same depth.
+	add(card, 0.3, 1.55, d / 2 - 0.019, false);
 	add(boxMesh(0.58, 0.41, 0.02, frameMat), 0.3, 1.55, d / 2 - 0.005, false);
 
 	// Pendant bulb.
@@ -186,7 +189,11 @@ export function buildRoom(pixelRatio: number, castShadows: boolean): Room {
 	add(new THREE.Mesh(keep(new THREE.SphereGeometry(0.06, 12, 10)), keep(new THREE.MeshStandardMaterial({ color: GETAWAY.lamp, emissive: new THREE.Color(GETAWAY.lamp), emissiveIntensity: 3 }))), 0, 2.36, 0.3, false);
 	add(new THREE.Mesh(keep(new THREE.CylinderGeometry(0.004, 0.004, 0.42, 4)), ironMat), 0, 2.59, 0.3, false);
 
+	const keepsakes = buildKeepsakes(castShadows);
+	group.add(keepsakes.group);
+
 	const colliders: Capsule[] = [
+		...keepsakes.colliders,
 		...boxWalls(0, 0, w, d).map((c) => ({ ...c, r: 0.12 })),
 		...boxWalls(1.75, -1.15, 0.9, 1.3, Math.PI / 2 + 0.25),
 		pillar(2.45, -1.95, 0.45),
@@ -199,7 +206,8 @@ export function buildRoom(pixelRatio: number, castShadows: boolean): Room {
 		{ id: 'getaway:drawing-board', kind: 'drawing-board', x: 1.75, z: -1.15, radius: 2, y: 1.0 },
 		{ id: 'getaway:cork-board', kind: 'cork-board', x: -w / 2, z: 0, radius: 2.6, y: CORK.y },
 		{ id: 'getaway:exit', kind: 'exit-door', x: 1.6, z: d / 2, radius: 1.8, y: 1.1 },
-		{ id: 'getaway:postcard', kind: 'postcard', x: 0.3, z: d / 2, radius: 1.5, y: 1.55 }
+		{ id: 'tidbit:postcard', kind: 'tidbit', x: 0.3, z: d / 2, radius: 1.5, y: 1.55 },
+		...keepsakes.interactables
 	];
 
 	return {
@@ -216,6 +224,7 @@ export function buildRoom(pixelRatio: number, castShadows: boolean): Room {
 		dispose() {
 			for (const p of particles) p.dispose();
 			boards.dispose();
+			keepsakes.dispose();
 			for (const x of disposables) x.dispose();
 		}
 	};

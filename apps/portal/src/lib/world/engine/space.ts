@@ -10,8 +10,8 @@ export type SpaceId = 'overworld' | 'getaway';
 
 export type Quality = 'low' | 'medium' | 'high';
 
-/** What the player can use with E. `id` is stable (`gate:vale`, `getaway:cork`, …). */
-export type InteractKind = 'gate' | 'cabin-door' | 'exit-door' | 'drawing-board' | 'cork-board' | 'word-wall' | 'guard' | 'postcard' | 'signpost' | 'campfire';
+/** What the player can use with E. `id` is stable (`gate:vale`, `getaway:cork`, `tidbit:heartcell`, …). */
+export type InteractKind = 'gate' | 'cabin-door' | 'exit-door' | 'drawing-board' | 'cork-board' | 'word-wall' | 'guard' | 'signpost' | 'campfire' | 'tidbit';
 
 export interface Interactable {
 	id: string;
@@ -21,7 +21,7 @@ export interface Interactable {
 	z: number;
 	/** How close the player must stand to it. */
 	radius: number;
-	/** Height of the thing, so the player must roughly look at it. */
+	/** Height of the thing: when two are in reach, the one nearest the crosshair wins. */
 	y: number;
 }
 
@@ -38,6 +38,8 @@ export interface Marker {
 	z: number;
 	icon: string;
 	label: string;
+	/** Shown only within this many metres until discovered (a place you stumble on); omitted = always shown. */
+	reveal?: number;
 }
 
 /** Film grade for a space, fed to the grade shader. */

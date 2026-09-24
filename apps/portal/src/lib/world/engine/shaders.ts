@@ -68,6 +68,21 @@ void main() {
 }
 `;
 
+/** The Heartcell's stream: energy rising in streaks and pulses from the dais to the cell, fading at both ends. */
+export const beamFragment = /* glsl */ `
+${NOISE}
+uniform float uTime; uniform vec3 uColor; uniform vec3 uCore;
+varying vec2 vUv;
+void main() {
+	float rise = fract(vUv.y * 1.6 - uTime * 0.55);
+	float pulse = smoothstep(0.0, 0.12, rise) * fall(0.12, 0.5, rise);
+	float streaks = smoothstep(0.45, 0.95, fbm(vec2(vUv.x * 16.0, vUv.y * 2.5 - uTime * 1.4)));
+	float ends = smoothstep(0.0, 0.1, vUv.y) * fall(0.85, 1.0, vUv.y);
+	vec3 col = mix(uColor, uCore, pulse * 0.7 + streaks * 0.3);
+	gl_FragColor = vec4(col * 1.5, (0.12 + streaks * 0.45 + pulse * 0.4) * ends);
+}
+`;
+
 export const skyVertex = /* glsl */ `
 varying vec3 vDir;
 void main() {

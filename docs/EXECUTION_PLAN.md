@@ -239,6 +239,26 @@ Firestore, grants, IAM) are Jordan's go — `docs/runbooks/platform-auth.md`.
   - axe-core (WCAG 2.2 AA tags) in the browser: 0 violations on `/apps`, the title, the HUD, map, journal (4 tabs), pause, settings, cork board, drawing board with errors, Word Wall, evolution, guarded notice and sign-in, light and dark.
   - Go-steps done 2026-09-23 on Jordan's go ("deploy it", Vale locked now): (b) not needed — the site's `/__/firebase/init.json` already serves this project's web config; (c) service account `gateway-runtime`, secret `gateway-session-secret` v1 (generated, never printed; accessor → gateway-runtime, viewer → github-actions), gateway revision `gateway-00011-rhc` runs as `gateway-runtime`, `/api/health` ok for all three; (d) `(default)` Firestore already existed (us-central1, HealthConnect's server-side data, no rules ever released) — `test-firestore-rules.mjs` → `126 checks, 126 as expected`, then `firebase deploy --only firestore:rules` → released. Still Jordan's: (a) enable Authentication (Google + Email/Password) and authorize `eisensoftware.web.app`, (e) sign in, then `grant-groups --set owner,vale`, (h) the run.app side door.
 
+- [x] 2026-09-23 Eisenhold: the Jarl's story (Jordan's ask: tidbit signs and easter eggs about the hockey career, Tesla,
+  Vermont and Burr and Burton, club soccer for Deportivo Cuenca, Davidson College and NREL; a mythical battery and a message
+  about Bush inventing the solar panel at NREL in the middle of the map; tidbits and visuals in the room). The Heartcell
+  (a 4680-shaped mythical battery) replaces the soul gem over the dais, with the legend's lectern before it; Memory Lane
+  by the road in; six landmarks (pond rink, Supercharger, Vermont covered bridge over a carved brook with a walkable deck,
+  Cuenca's domes, Davidson's portico, NREL's turbine and solar field); twelve keepsakes in My Get-a-way; 27 tidbits read
+  with E into a dialog, counted in a new journal tab, listed on the map. Words in `domain/tidbits.ts`, placement in
+  `domain/landmarks.ts`. Evidence:
+  - `make check` exit 0: `registry: valid … access-controlled: vale`, `sites: up to date (3 skill(s) …)`, portal build,
+    `registry: published copy valid, no repo blocks`, portal `Tests 52 passed | 2 skipped (54)` (new: `landmarks.test.ts`
+    10, `tidbits.test.ts` 5), gateway `Tests 223 passed (223)`, `layers: ok`; `npm run check` → `0 ERRORS 0 WARNINGS`.
+  - Browser (local realm): every landmark reached by the map's Travel and screenshotted; the Heartcell and legend
+    lectern (prompt `[E] Read · The Legend of the Panel`, dialog `1 of 27 tidbits found`); walking into Green Mountain
+    Crossing stays on the deck across the brook; keepsakes in the room with prompts (`[E] Look at · Red Model Car`);
+    reduced motion holds the Heartcell still and fully charged; 120 fps at the spawn on this machine.
+  - axe-core (WCAG 2.2 AA tags): 0 violations on the tidbit dialog, the journal's Tidbits tab and the map, light and
+    dark; no page overflow at 375 px. Engine chunk 690.96 → 746.42 kB (gzip 182.06 → 201.28 kB), loaded after the title
+    screen; the >500 kB chunk warning predates this change.
+  - Room fix on the way: the Get-a-way postcard sat exactly on its frame's face (z-fighting); it now sits 4 mm proud.
+
 ## Surprises & discoveries
 
 - Vale runs on Cloud Run, not Firebase Hosting; Firebase (`holistic-habit-ai`) is sign-in only.
@@ -284,6 +304,10 @@ Firestore, grants, IAM) are Jordan's go — `docs/runbooks/platform-auth.md`.
 - `npm install vitest@4` hit an npm arborist bug (`Cannot read properties of null (reading 'edgesOut')`); installing it on
   its own with `--legacy-peer-deps` worked and a clean `npm ci` from the lockfile passes.
 - three.js 0.186 removed `PCFSoftShadowMap` (falls back to `PCFShadowMap`).
+- Canvas-painted text on faces the moon does not light is unreadable at night: the legend's plaque needed an emissive
+  mask of its letters (as the gate runes have) before it could be read from the square.
+- Fast travel to a tall landmark frames nothing but its base at the default gaze: a landmark can now set `gaze`, and the
+  spawn carries it as the arrival pitch (NREL looks up at its turbine).
 
 ## Decision log
 
@@ -304,6 +328,7 @@ Firestore, grants, IAM) are Jordan's go — `docs/runbooks/platform-auth.md`.
 | 13 | Realm mode is `open` on localhost and under `vite dev` (every gate and room, board in `localStorage`), `guarded` elsewhere; `?realm=guarded` rehearses production | Jordan: "All spaces should be available when deploying locally"; the server-side door is unaffected by the client's mode | Jordan, 2026-09-23 |
 | 14 | My Get-a-way belongs to group `owner`; its board is Firestore `boards/getaway/cards/*` under `firestore.rules` | Personal plans stay private; rules enforce the card schema and immutable keys | Claude, 2026-09-23 |
 | 15 | The portal adopts `ui-style-nordic`; scene colours live in `engine/palette.ts` only | The realm needs one look across HUD and scene; tokens for UI, one palette module for WebGL | Claude, 2026-09-23 — Jordan may swap |
+| 16 | The owner's story lives in the world as landmarks and tidbits: words in `domain/tidbits.ts`, places in `domain/landmarks.ts`, found tidbits remembered per browser; the legend of the panel is told as a legend, with the scribes' dates | One place to edit the story; tests keep landmarks clear of any gate layout; a playful claim stays visibly playful | Jordan (goal), Claude (shape), 2026-09-23 |
 
 ## Outcomes & retrospective
 

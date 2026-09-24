@@ -13,6 +13,7 @@
 	import MapMenu from './MapMenu.svelte';
 	import NoticeDialog from './NoticeDialog.svelte';
 	import PauseMenu from './PauseMenu.svelte';
+	import TidbitDialog from './TidbitDialog.svelte';
 	import TitleScreen from './TitleScreen.svelte';
 	import WordWallPanel from './WordWallPanel.svelte';
 	import { WorldController } from './controller';
@@ -104,6 +105,8 @@
 			<NoticeDialog {ui} {ctl} notice={ui.notice} />
 		{:else if ui.overlay === 'evolution' && ui.evolving}
 			<Evolution {ui} {ctl} evolution={ui.evolving} />
+		{:else if ui.overlay === 'tidbit' && ui.reading}
+			<TidbitDialog {ui} {ctl} reading={ui.reading} />
 		{/if}
 	{/if}
 

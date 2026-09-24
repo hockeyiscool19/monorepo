@@ -1,9 +1,11 @@
 // The overworld space: the valley of Eisenhold under the aurora, with one gate per app in the registry,
-// the square, the cabin, the guard, the dragon and falling snow. Assembled here, drawn by the engine.
+// the square, the cabin, the guard, the dragon, falling snow, and the landmarks of the Jarl's story with the
+// Heartcell at the centre. Assembled here, drawn by the engine.
 
 import * as THREE from 'three';
 import type { Capsule } from '../../domain/collide';
-import { inFrontOf, type RealmData, type RealmLayout } from '../../domain/realm';
+import { HEARTCELL } from '../../domain/landmarks';
+import { inFrontOf, type RealmData, type RealmLayout, type Spot } from '../../domain/realm';
 import { gatePlaceName, PLACE_NAMES } from '../../domain/lore';
 import { NIGHT } from '../palette';
 import { snowfall } from '../particles';
@@ -13,6 +15,7 @@ import { buildDragon, buildGuard } from './creatures';
 import { buildFlora } from './flora';
 import { buildGate, type GateObject } from './gate';
 import { buildHub } from './hub';
+import { buildLandmarks } from './landmarks/index';
 import { buildSky } from './sky';
 import { buildTerrain } from './terrain';
 
@@ -61,6 +64,8 @@ export function buildOverworld(realm: RealmData, layout: RealmLayout, ctx: Build
 	scene.add(guard.group);
 	const dragon = buildDragon();
 	scene.add(dragon.group);
+	const landmarks = buildLandmarks(layout, { heightAt: terrain.heightAt, pixelRatio: ctx.pixelRatio, quality: ctx.quality });
+	scene.add(landmarks.group);
 	const snow = snowfall({
 		count: ctx.quality === 'low' ? 1400 : ctx.quality === 'medium' ? 3200 : 5600,
 		color: new THREE.Color(NIGHT.snow),
@@ -68,8 +73,8 @@ export function buildOverworld(realm: RealmData, layout: RealmLayout, ctx: Build
 	});
 	scene.add(snow.points);
 
-	const colliders: Capsule[] = [...hub.colliders, ...flora.colliders, ...cabin.colliders, guard.collider];
-	const interactables: Interactable[] = [...hub.interactables, cabin.interactable, guard.interactable];
+	const colliders: Capsule[] = [...hub.colliders, ...flora.colliders, ...cabin.colliders, guard.collider, ...landmarks.colliders];
+	const interactables: Interactable[] = [...hub.interactables, cabin.interactable, guard.interactable, ...landmarks.interactables];
 	const triggers: Trigger[] = [];
 	for (const gate of gates.values()) {
 		colliders.push(...gate.colliders);
@@ -81,16 +86,22 @@ export function buildOverworld(realm: RealmData, layout: RealmLayout, ctx: Build
 		...layout.gates.map((g) => ({ id: `gate:${g.gate.id}`, x: g.spot.x, z: g.spot.z, icon: g.gate.icon || '✦', label: gatePlaceName(g.gate.name) })),
 		{ id: 'cabin-door', x: layout.cabin.x, z: layout.cabin.z, icon: '🏠', label: PLACE_NAMES.cabin },
 		{ id: 'word-wall', x: layout.wordWall.x, z: layout.wordWall.z, icon: '📜', label: PLACE_NAMES.wordWall },
-		{ id: 'campfire', x: layout.campfire.x, z: layout.campfire.z, icon: '🔥', label: PLACE_NAMES.campfire }
+		{ id: 'campfire', x: layout.campfire.x, z: layout.campfire.z, icon: '🔥', label: PLACE_NAMES.campfire },
+		{ id: HEARTCELL.id, x: layout.heartcell.x, z: layout.heartcell.z, icon: HEARTCELL.icon, label: HEARTCELL.name },
+		// Landmarks show on the compass once you are near, or once found: places to stumble on.
+		...layout.landmarks.map((l) => ({ id: `landmark:${l.id}`, x: l.spot.x, z: l.spot.z, icon: l.icon, label: l.name, reveal: 45 }))
 	];
 
-	const spawns: Record<string, { x: number; z: number; yaw: number }> = {
+	const spawns: Record<string, Spot> = {
 		start: layout.spawn,
 		cabin: cabin.doorstep,
 		'word-wall': inFrontOf(layout.wordWall, 3.4),
-		campfire: inFrontOf(layout.campfire, 3)
+		campfire: inFrontOf(layout.campfire, 3),
+		// Before the lectern, looking north past it to the Heartcell.
+		[HEARTCELL.id]: { x: layout.lectern.x, z: layout.lectern.z + 3.9, yaw: 0 }
 	};
 	for (const g of layout.gates) spawns[`gate:${g.gate.id}`] = inFrontOf(g.spot, 8);
+	for (const l of layout.landmarks) spawns[`landmark:${l.id}`] = { ...inFrontOf(l.spot, l.approach), pitch: l.gaze };
 
 	// Every ward starts closed (fail closed): only the UI's decision opens a gate.
 	const disabled = new Set<string>();
@@ -126,7 +137,8 @@ export function buildOverworld(realm: RealmData, layout: RealmLayout, ctx: Build
 		ambience: 'wind',
 		sounds: [
 			...fires.map((f, i) => ({ kind: 'fire' as const, x: f.x, z: f.z, key: `fire:${i}` })),
-			...layout.gates.map((g) => ({ kind: 'portal' as const, x: g.spot.x, z: g.spot.z, key: `portal:${g.gate.id}` }))
+			...layout.gates.map((g) => ({ kind: 'portal' as const, x: g.spot.x, z: g.spot.z, key: `portal:${g.gate.id}` })),
+			{ kind: 'portal' as const, x: layout.heartcell.x, z: layout.heartcell.z, key: 'portal:heartcell' }
 		],
 		update(frame) {
 			const { t, dt, player, camera, reducedMotion } = frame;
@@ -139,6 +151,7 @@ export function buildOverworld(realm: RealmData, layout: RealmLayout, ctx: Build
 			cabin.update(t);
 			guard.update(t, player);
 			dragon.update(t);
+			landmarks.update(t);
 			snow.update(reducedMotion ? 0 : t, camera.position);
 		},
 		setGateLook(id: string, look: GateLook) {
@@ -157,6 +170,7 @@ export function buildOverworld(realm: RealmData, layout: RealmLayout, ctx: Build
 			cabin.dispose();
 			guard.dispose();
 			dragon.dispose();
+			landmarks.dispose();
 			snow.dispose();
 		}
 	};

@@ -1,5 +1,6 @@
-// Eisenhold Square and its landmarks: flagstones and a curb, the central standing stone, the Word Wall that
-// remembers every app's version, the travellers' campfire, a frozen pond and a signpost at the crossroads.
+// Eisenhold Square and its landmarks: flagstones and a curb, the rune dais at the centre (the Heartcell floats
+// over it; see landmarks/heartcell.ts), the Word Wall that remembers every app's version, the travellers' campfire
+// and a signpost at the crossroads. Stillwater Pond is the rink now (landmarks/rink.ts).
 
 import * as THREE from 'three';
 import { pillar, wall, type Capsule } from '../../domain/collide';
@@ -51,8 +52,8 @@ export function buildHub(layout: RealmLayout, gates: RealmGate[], heightAt: (x: 
 	curb.receiveShadow = true;
 	group.add(curb);
 
-	// The centre of the square: a low rune dais with a soul gem turning above it — low enough that every
-	// gate stays in view from the road in.
+	// The centre of the square: a low rune dais. The Heartcell floats over it, clear of the line from the road in
+	// to the northern gate.
 	const dais = new THREE.Mesh(keep(new THREE.CylinderGeometry(2.3, 2.6, 0.42, 10)), stoneMat);
 	dais.position.y = 0.21;
 	dais.receiveShadow = true;
@@ -64,17 +65,6 @@ export function buildHub(layout: RealmLayout, gates: RealmGate[], heightAt: (x: 
 	ringTop.rotation.x = -Math.PI / 2;
 	ringTop.position.y = 0.425;
 	group.add(ringTop);
-	const gemMat = keep(
-		new THREE.MeshStandardMaterial({ color: NIGHT.aurora[2], emissive: new THREE.Color(NIGHT.aurora[2]), emissiveIntensity: 1.6, roughness: 0.15, metalness: 0.3, flatShading: true, transparent: true, opacity: 0.92 })
-	);
-	const gem = new THREE.Mesh(keep(new THREE.OctahedronGeometry(0.42, 0)), gemMat);
-	gem.scale.set(1, 1.7, 1);
-	gem.position.y = 1.9;
-	gem.castShadow = true;
-	group.add(gem);
-	const gemLight = new THREE.PointLight(NIGHT.aurora[2], 6, 9, 1.8);
-	gemLight.position.y = 1.9;
-	group.add(gemLight);
 	colliders.push(pillar(0, 0, 2.5));
 
 	// The Word Wall: a curved wall of carved stone. Its words are the apps and the versions that run.
@@ -153,17 +143,6 @@ export function buildHub(layout: RealmLayout, gates: RealmGate[], heightAt: (x: 
 	colliders.push(pillar(cf.x, cf.z, 1.1));
 	interactables.push({ id: 'campfire', kind: 'campfire', x: cf.x, z: cf.z, radius: 3.2, y: 0.6 });
 
-	// Stillwater Pond: ice that catches the firelight.
-	const pd = layout.pond;
-	const ice = new THREE.Mesh(
-		keep(new THREE.CircleGeometry(7.2, 48)),
-		keep(new THREE.MeshStandardMaterial({ color: NIGHT.aurora[1], roughness: 0.08, metalness: 0.35, transparent: true, opacity: 0.85 }))
-	);
-	ice.rotation.x = -Math.PI / 2;
-	ice.position.set(pd.x, -0.3, pd.z);
-	ice.receiveShadow = true;
-	group.add(ice);
-
 	// Signpost at the southern edge of the square, pointing at each gate.
 	const sp = { x: -2.6, z: hub + 1.6 };
 	const post = new THREE.Mesh(keep(new THREE.CylinderGeometry(0.09, 0.11, 3.2, 6)), logMat);
@@ -199,9 +178,6 @@ export function buildHub(layout: RealmLayout, gates: RealmGate[], heightAt: (x: 
 		fires: [{ x: cf.x, z: cf.z }],
 		update(t, near) {
 			for (const p of particles) p.update(t);
-			gem.rotation.y = t * 0.6;
-			gem.position.y = 1.9 + Math.sin(t * 1.3) * 0.12;
-			gemLight.intensity = 5.5 + Math.sin(t * 2.1) * 0.8;
 			cfLight.intensity = 20 + Math.sin(t * 7.3) * 2.5 + Math.sin(t * 17.1) * 1.5;
 			const d = Math.hypot(near.x - readSpot.x, near.z - readSpot.z);
 			wallMat.emissiveIntensity = 0.25 + Math.max(0, 1 - d / 9) * 1.4 * (0.8 + 0.2 * Math.sin(t * 2));

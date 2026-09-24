@@ -1,12 +1,13 @@
 <script lang="ts">
 	// The journal: who you are (sign-in and your guilds), every guild's profile, your quests (the cork board
-	// as a quest log, with your level), and settings. Tabs follow the WAI-ARIA pattern: arrow keys move
-	// between tabs, Home/End jump, Tab moves into the panel.
+	// as a quest log, with your level), the tidbits of the Jarl's story you have found, and settings. Tabs follow
+	// the WAI-ARIA pattern: arrow keys move between tabs, Home/End jump, Tab moves into the panel.
 	import Dialog from './Dialog.svelte';
 	import GuildsPanel from './GuildsPanel.svelte';
 	import ProfilePanel from './ProfilePanel.svelte';
 	import QuestsPanel from './QuestsPanel.svelte';
 	import SettingsPanel from './SettingsPanel.svelte';
+	import TidbitsPanel from './TidbitsPanel.svelte';
 	import type { WorldController } from './controller';
 	import type { JournalTab, WorldUi } from './state.svelte';
 
@@ -16,6 +17,7 @@
 		{ id: 'profile', label: 'Profile' },
 		{ id: 'guilds', label: 'Guilds' },
 		{ id: 'quests', label: 'Quests' },
+		{ id: 'tidbits', label: 'Tidbits' },
 		{ id: 'settings', label: 'Settings' }
 	];
 	const buttons: HTMLButtonElement[] = [];
@@ -59,6 +61,8 @@
 				<GuildsPanel {ui} {ctl} />
 			{:else if ui.journalTab === 'quests'}
 				<QuestsPanel {ui} {ctl} />
+			{:else if ui.journalTab === 'tidbits'}
+				<TidbitsPanel {ui} {ctl} />
 			{:else}
 				<SettingsPanel {ui} {ctl} />
 			{/if}

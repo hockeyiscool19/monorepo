@@ -130,6 +130,110 @@ export const STICKY = {
 	pins: [0xd8413a, 0x2f6fd6, 0x2e9e5b, 0xe0a321]
 } as const;
 
+// ---- The Jarl's story: the Heartcell, the landmarks around the square and the keepsakes in the room ---------
+
+/** The Heartcell, the mythical battery over the dais, and the relic panel on the legend's lectern. */
+export const CELL = {
+	steel: 0xc3cbd4,
+	steelDark: 0x68717d,
+	wrap: 0x121f38,
+	charge: 0x5ef6ff,
+	chargeDeep: 0x1d8fd0,
+	spark: 0xd9fbff,
+	relic: 0x1b2d58,
+	relicLine: 0xa9bddc
+} as const;
+
+export const RINK = {
+	ice: 0xbfe4f4,
+	boards: 0xe8e3d6,
+	kick: 0xd8b13c,
+	post: 0xc8202b,
+	mesh: 0xf1f4f8,
+	puck: 0x16161a,
+	tape: 0x1d2330,
+	bulb: 0xffd48a,
+	wire: 0x2a2724,
+	/** A blond-ash stick shaft. */
+	stick: 0xd9bc8c
+} as const;
+
+export const TESLA = {
+	paint: 0xb3121d,
+	glass: 0x0d1117,
+	trim: 0x1b1d22,
+	tyre: 0x16171a,
+	rim: 0x8d949c,
+	head: 0xeef6ff,
+	tail: 0xff2a36,
+	port: 0x48ff8a,
+	stall: 0xeceef1,
+	stallRed: 0xe31937,
+	pad: 0x2b2f36,
+	line: 0xd9dde3
+} as const;
+
+export const VERMONT = {
+	barn: 0x8e2a20,
+	barnDark: 0x5a1912,
+	roof: 0x3a3f47,
+	deck: 0x6b5238,
+	trim: 0xefe9dc,
+	signboard: 0x1c1c1e,
+	maple: 0x4b3a2e,
+	bucket: 0xa9b2ba,
+	syrup: 0xb8661d,
+	bbaGreen: 0x1d5a38,
+	bbaGold: 0xd9a92b,
+	brookIce: 0x9fcde3,
+	sky: 0x9fc3e6,
+	dusk: 0xf2c38b,
+	mountains: [0x3f6b3a, 0x5c8a4f, 0x7fa66a],
+	leaves: [0xd9531e, 0xe8a33d, 0xb8321f, 0xf0c24b],
+	river: 0x5f8fb0
+} as const;
+
+export const CUENCA = {
+	domeBlue: 0x2c73c4,
+	domeWhite: 0xe8eef6,
+	brick: 0xa5563b,
+	brickDark: 0x6e3524,
+	stone: 0xd6c7ae,
+	plaza: 0x8d4a38,
+	red: 0xd0161e,
+	yellow: 0xf5c400,
+	ink: 0x141416,
+	goal: 0xf2f4f7,
+	ball: 0xf4f4f0,
+	patch: 0x1b1b1f,
+	glass: 0xffc46b
+} as const;
+
+export const DAVIDSON = {
+	red: 0xc8102e,
+	ink: 0x151517,
+	brick: 0x8f3f2c,
+	column: 0xeee9df,
+	roof: 0x39414b,
+	window: 0xffcf85,
+	rim: 0xf26a21,
+	backboard: 0xf3f3f1
+} as const;
+
+export const NREL = {
+	panel: 0x16305c,
+	cell: 0x2c4f8c,
+	grid: 0xaebcd0,
+	frame: 0xc3cad3,
+	tower: 0xe4e8ed,
+	blade: 0xf0f2f5,
+	beacon: 0xff2b2b,
+	badge: 0x2f6db5
+} as const;
+
+/** Eisenhold's own team colours, for the jersey in the Get-a-way. */
+export const JERSEY = { body: 0x8c1f24, stripe: 0xd9b45e, trim: 0xf1ead8 } as const;
+
 /** sRGB hex → CSS colour string, for canvas textures. */
 export function css(hex: number, alpha = 1): string {
 	const r = (hex >> 16) & 255;

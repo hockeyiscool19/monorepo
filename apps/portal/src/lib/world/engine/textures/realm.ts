@@ -36,7 +36,7 @@ export function stoneTexture(seed: number, repeat: [number, number] = [1, 1], ro
 }
 
 /** One rune glyph: a vertical stave with branches, in the spirit of the Elder Futhark but invented here. */
-function rune(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rand: () => number): void {
+export function rune(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, rand: () => number): void {
 	ctx.beginPath();
 	ctx.moveTo(x + w / 2, y);
 	ctx.lineTo(x + w / 2, y + h);

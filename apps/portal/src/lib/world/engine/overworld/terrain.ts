@@ -1,6 +1,7 @@
 // The valley of Eisenhold: a flat square, gentle snowfields, and a ring of ridged mountains, with trodden
-// paths from the square to every gate and landmark. heightAt() is the same function the mesh was built
-// from, so the player's feet and the ground always agree.
+// paths from the square to every gate and landmark, and a frozen brook carved under the Vermont bridge.
+// The mesh is built from ground(); heightAt() is ground() plus the decks you can walk on (the bridge), so the
+// player's feet and what they stand on always agree.
 
 import * as THREE from 'three';
 import type { RealmLayout } from '../../domain/realm';
@@ -12,8 +13,9 @@ import { groundDetail } from '../textures/realm';
 
 export interface Terrain {
 	mesh: THREE.Mesh;
+	/** Where feet land: the ground, or a deck above it. */
 	heightAt(x: number, z: number): number;
-	/** Path centre-lines, for keeping trees off the roads. */
+	/** Path and brook centre-lines, for keeping trees off the roads and out of the brook. */
 	paths: [number, number, number, number][];
 	dispose(): void;
 }
@@ -27,6 +29,17 @@ interface Pad {
 
 const SIZE = 620;
 const SEGMENTS: Record<Quality, number> = { low: 110, medium: 170, high: 230 };
+
+/** How far the banks of a brook reach beyond its bed. */
+const BANK = 2.2;
+
+/** The point on the segment a→b nearest to (px, pz). */
+function nearestOn([ax, az, bx, bz]: [number, number, number, number], px: number, pz: number): [number, number] {
+	const dx = bx - ax;
+	const dz = bz - az;
+	const t = Math.max(0, Math.min(1, ((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz || 1)));
+	return [ax + t * dx, az + t * dz];
+}
 
 function segDistance(px: number, pz: number, [ax, az, bx, bz]: [number, number, number, number]): number {
 	const dx = bx - ax;
@@ -44,7 +57,9 @@ export function buildTerrain(layout: RealmLayout, quality: Quality): Terrain {
 		{ x: layout.cabin.x, z: layout.cabin.z, r: 8.5, h: 0 },
 		{ x: layout.wordWall.x, z: layout.wordWall.z, r: 6, h: 0 },
 		{ x: layout.campfire.x, z: layout.campfire.z, r: 4.5, h: 0 },
-		{ x: layout.guard.x, z: layout.guard.z, r: 2.5, h: 0 }
+		{ x: layout.guard.x, z: layout.guard.z, r: 2.5, h: 0 },
+		// Stillwater Pond (the rink) already lies flat in its hollow.
+		...layout.landmarks.filter((l) => l.id !== 'rink').map((l) => ({ x: l.spot.x, z: l.spot.z, r: l.clear, h: 0 }))
 	];
 
 	// Paths from the edge of the square to what matters, plus the road south to the spawn point.
@@ -62,9 +77,16 @@ export function buildTerrain(layout: RealmLayout, quality: Quality): Terrain {
 		const [ax, az] = edge(t.x, t.z);
 		return [ax, az, t.x, t.z];
 	});
-	paths.push([0, hub - 0.5, layout.spawn.x, layout.spawn.z + 30]);
+	const road: [number, number, number, number] = [0, hub - 0.5, layout.spawn.x, layout.spawn.z + 30];
+	paths.push(road);
+	for (const l of layout.landmarks) {
+		const t = inFrontOf(l.spot, l.approach);
+		const [ax, az] = l.via === 'road' ? nearestOn(road, t.x, t.z) : edge(t.x, t.z);
+		paths.push([ax, az, t.x, t.z]);
+	}
+	const brooks = layout.brooks.map((b) => ({ ...b, seg: [b.ax, b.az, b.bx, b.bz] as [number, number, number, number] }));
 
-	function heightAt(x: number, z: number): number {
+	function ground(x: number, z: number): number {
 		const r = Math.hypot(x, z);
 		let h = n.fbm(x * 0.025, z * 0.025, 3) * 1.6 * smoothstep(hub + 1, hub + 16, r);
 		h += smoothstep(56, 118, r) * (12 + 50 * n.ridged(x * 0.011, z * 0.011, 5));
@@ -75,7 +97,26 @@ export function buildTerrain(layout: RealmLayout, quality: Quality): Terrain {
 		}
 		const pd = Math.hypot(x - layout.pond.x, z - layout.pond.z);
 		if (pd < 11) h = lerp(h, -0.45, 1 - smoothstep(6.5, 11, pd));
+		for (const b of brooks) {
+			const d = segDistance(x, z, b.seg);
+			if (d < b.width / 2 + BANK) h = lerp(h, -b.depth, 1 - smoothstep(b.width / 2, b.width / 2 + BANK, d));
+		}
 		if (r < hub + 1) h = lerp(0, h, smoothstep(hub - 1, hub + 1, r));
+		return h;
+	}
+
+	function heightAt(x: number, z: number): number {
+		const h = ground(x, z);
+		for (const d of layout.decks) {
+			const dx = x - d.x;
+			const dz = z - d.z;
+			const c = Math.cos(d.yaw);
+			const s = Math.sin(d.yaw);
+			// Into the deck's frame: across it (u) and along it (v).
+			const u = dx * c - dz * s;
+			const v = dx * s + dz * c;
+			if (Math.abs(u) <= d.width / 2 && Math.abs(v) <= d.length / 2) return Math.max(h, d.height);
+		}
 		return h;
 	}
 
@@ -83,7 +124,7 @@ export function buildTerrain(layout: RealmLayout, quality: Quality): Terrain {
 	const geometry = new THREE.PlaneGeometry(SIZE, SIZE, seg, seg);
 	geometry.rotateX(-Math.PI / 2);
 	const pos = geometry.attributes.position as THREE.BufferAttribute;
-	for (let i = 0; i < pos.count; i++) pos.setY(i, heightAt(pos.getX(i), pos.getZ(i)));
+	for (let i = 0; i < pos.count; i++) pos.setY(i, ground(pos.getX(i), pos.getZ(i)));
 	geometry.computeVertexNormals();
 
 	const normals = geometry.attributes.normal as THREE.BufferAttribute;
@@ -118,7 +159,7 @@ export function buildTerrain(layout: RealmLayout, quality: Quality): Terrain {
 	return {
 		mesh,
 		heightAt,
-		paths,
+		paths: [...paths, ...brooks.map((b) => b.seg)],
 		dispose() {
 			geometry.dispose();
 			material.dispose();

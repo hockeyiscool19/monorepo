@@ -34,7 +34,7 @@ export class Player {
 		this.x = spot.x;
 		this.z = spot.z;
 		this.yaw = spot.yaw;
-		this.pitch = space.id === 'getaway' ? -0.06 : 0.02;
+		this.pitch = spot.pitch ?? (space.id === 'getaway' ? -0.06 : 0.02);
 		this.y = space.heightAt(spot.x, spot.z);
 		this.vx = this.vz = this.vy = 0;
 	}

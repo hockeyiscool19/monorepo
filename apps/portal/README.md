@@ -6,6 +6,8 @@ SvelteKit (Svelte 5, TypeScript, `adapter-static`, plain CSS) plus three.js. At 
 - **`/` — Eisenhold**, a walkable, Skyrim-like hold under the aurora: one rune gate per app in the registry, a square
   with a Word Wall of running versions, a hold guard, a dragon on the wind, and **My Get-a-way** — a small, grainy
   cabin with Colorado outside the window, a drawing board and a cork board of project stickies that evolve when done.
+  **The Jarl's story** is hidden around it: the Heartcell (a mythical battery) over the square, the legend of the
+  panel, six landmarks of the owner's life and 27 tidbits to find, a dozen of them keepsakes in the Get-a-way.
 - **`/apps`** — the classic tiles and deployments table: the plain, accessible list view of the same registry.
 - **`/registry.json`** — the published registry (no `repo` blocks).
 
@@ -69,18 +71,48 @@ own Cloud Run URL (and `/api` to the published gateway), so walking into a gate 
   the handheld games' medium-fast curve). Reduced motion skips straight to the result.
 - The quest log (journal → Quests) reads the same board as quests, with your level.
 
+## The Jarl's story: landmarks and tidbits
+
+The hold tells its owner's story in places to walk to and little things to read. Walk up to a sign, plaque or keepsake
+and press E (or tap the prompt): a **tidbit** opens in a small dialog that stays until you close it. The first reading
+chimes and counts; the journal's **Tidbits** tab lists every one by topic — found ones in full, the rest as a hint of
+where to look — and remembers what you found in this browser (`localStorage` key `eisenhold.tidbits.v1`, a per-viewer
+convenience like discovered places).
+
+| Where | What stands there | Tidbits |
+|---|---|---|
+| The square | **The Heartcell**: a 4680-shaped mythical battery floating over the rune dais, charge rings filling, gilded orbits, arcs and a stream of light; before it, a lectern carved with **the legend of the panel** (Bush invented the solar panel at NREL — so the legend goes) and a relic panel on top | 2 |
+| Beside the road in | **Memory Lane**: a painted signpost with an arrow at every landmark | 1 |
+| Stillwater Pond (SW) | **Pond rink**: boards, two nets, pucks, string lights — and a lost puck in a drift past the far net | 2 |
+| South road | **Eisenhold Supercharger** (Tesla): red-and-white stalls and a car charging in stall two | 2 |
+| Beyond the rink (S) | **Green Mountain Crossing** (Vermont): a red covered bridge over a frozen brook (you walk its deck), a sugarbush with sap buckets, a sugarhouse, the Burr and Burton banner | 3 |
+| South-east | **Cuenca** (Ecuador): three blue-tiled domes, short towers, the city's colours, a goal and the Deportivo Cuenca banner | 2 |
+| West | **Davidson College**: a red-brick hall, a white portico and dome, Wildcats banners, a hoop | 2 |
+| East | **NREL, Golden**: rows of solar panels under a turning wind turbine | 1 |
+| My Get-a-way | Keepsakes: a Green Mountain painting, Burr and Burton and Davidson pennants, crossed hockey sticks, jersey 19, maple syrup, a sill solar panel with an NREL badge, a match ball, a Deportivo Cuenca scarf, a poster of Cuenca, a model car, the Colorado postcard | 12 |
+
+- **Edit the words** in `src/lib/world/domain/tidbits.ts` (one place, content only); **move a landmark** in
+  `src/lib/world/domain/landmarks.ts` — `tests/world/landmarks.test.ts` keeps every landmark, the Vermont brook and the
+  Memory Lane post clear of the gates (for 1–10 apps), the cabin, the Word Wall, the campfire and the road in.
+- The map lists every landmark with Travel; landmarks appear on the compass once you are within 45 m or have found
+  them, and announce themselves when discovered. Colours live in `palette.ts` (`CELL`, `RINK`, `TESLA`, `VERMONT`,
+  `CUENCA`, `DAVIDSON`, `NREL`, `JERSEY`).
+- On the real domain the Get-a-way's keepsakes are behind its guild like the rest of the room; the journal says so.
+
 ## Layout (ports and adapters)
 
 ```
 src/routes/+page.svelte, +page.server.ts        the world (build-time realm data from $lib/server/realm.ts)
 src/routes/(classic)/+layout.svelte, apps/        the classic chrome and the /apps tiles page
 src/routes/registry.json/+server.ts               prerendered /registry.json
-src/lib/world/domain/        pure: realm layout and compass math, access rules, realm mode, the board and EXP, collisions, lore
+src/lib/world/domain/        pure: realm layout and compass math, access rules, realm mode, the board and EXP, collisions, lore,
+                             landmarks (where the Jarl's places stand) and tidbits (what they say)
 src/lib/world/application/   ports (AuthPort, DoorPort, BoardStore, Navigator) and use cases (enter a gate, file/move a card)
 src/lib/world/adapters/      Firebase config + Auth, the HTTP door, localStorage and Firestore board stores
 src/lib/world/engine/        three.js: Engine (loop, post-processing), player, input, audio, particles, shaders,
-                             palette.ts, textures/, overworld/ (terrain, sky, flora, gates, square, cabin, creatures),
-                             getaway/ (room, Colorado, cork and drafting boards)
+                             palette.ts, textures/, overworld/ (terrain, sky, flora, gates, square, cabin, creatures,
+                             landmarks/: a Kit that merges static pieces per material, the Heartcell, each landmark),
+                             getaway/ (room, Colorado, cork and drafting boards, keepsakes)
 src/lib/world/ui/            World.svelte, controller.ts (the composition root), state.svelte.ts, HUD and every dialog
 tests/world/                 vitest for domain/ (and a Firestore test that runs only when the emulators are up)
 ```
@@ -105,7 +137,11 @@ sealed gate's ward is a collider as well as a picture. Every ward starts closed.
 - Every menu is a native modal `<dialog>` (focus trapped, Escape closes, focus returns to the world); tabs follow the
   ARIA pattern; forms have visible labels, autocomplete and field errors that say how to fix them; the cork board moves
   notes by buttons, not only by dragging (2.5.7).
-- Motion: `prefers-reduced-motion` or Settings → Motion → Reduced freezes flames, snow, aurora and the evolution; the
-  title's animation ends within five seconds (2.2.2).
+- Motion: `prefers-reduced-motion` or Settings → Motion → Reduced freezes flames, snow, aurora and the evolution — and
+  the Heartcell (held fully charged), its arcs, banners, steam and the turbine; the title's animation ends within five
+  seconds (2.2.2).
+- Tidbits open in a native dialog that stays until closed (no timer to race, 2.2.1); the journal's Tidbits tab and the
+  map's Travel buttons reach every landmark without walking the whole valley.
 - Checked with axe-core (WCAG 2.2 AA tags) on `/apps`, the title, the HUD, every dialog and the evolution, in light and
-  dark themes: 0 violations.
+  dark themes: 0 violations. The tidbit dialog, the journal's Tidbits tab and the map with landmarks: 0 violations,
+  light and dark, and no page overflow at 375 px.

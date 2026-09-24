@@ -1,6 +1,6 @@
 // Reactive state of the world's interface (Svelte 5 runes). The controller writes it; components read it.
-// Per-viewer conveniences (settings, discovered places) persist in localStorage, wrapped in try/catch
-// because storage can be blocked; nothing that must be shared or kept safe lives here.
+// Per-viewer conveniences (settings, discovered places, tidbits found) persist in localStorage, wrapped in
+// try/catch because storage can be blocked; nothing that must be shared or kept safe lives here.
 
 import type { Viewer } from '../domain/access';
 import type { Card } from '../domain/board';
@@ -8,8 +8,8 @@ import type { HudFrame } from '../engine/Engine';
 import type { Quality } from '../engine/space';
 
 export type Phase = 'title' | 'loading' | 'playing' | 'failed';
-export type Overlay = 'map' | 'journal' | 'drawing' | 'cork' | 'wordwall' | 'notice' | 'evolution' | 'pause' | null;
-export type JournalTab = 'profile' | 'guilds' | 'quests' | 'settings';
+export type Overlay = 'map' | 'journal' | 'drawing' | 'cork' | 'wordwall' | 'notice' | 'evolution' | 'pause' | 'tidbit' | null;
+export type JournalTab = 'profile' | 'guilds' | 'quests' | 'tidbits' | 'settings';
 
 export interface Settings {
 	quality: Quality;
@@ -36,6 +36,7 @@ export interface Evolution {
 
 const SETTINGS_KEY = 'eisenhold.settings.v1';
 const DISCOVERED_KEY = 'eisenhold.discovered.v1';
+const TIDBITS_KEY = 'eisenhold.tidbits.v1';
 
 function defaultQuality(): Quality {
 	if (typeof matchMedia === 'undefined') return 'medium';
@@ -68,22 +69,27 @@ export function saveSettings(settings: Settings): void {
 	}
 }
 
-export function loadDiscovered(): string[] {
+function loadIds(key: string): string[] {
 	try {
-		const raw = JSON.parse(localStorage.getItem(DISCOVERED_KEY) ?? '[]') as unknown;
+		const raw = JSON.parse(localStorage.getItem(key) ?? '[]') as unknown;
 		return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : [];
 	} catch {
 		return [];
 	}
 }
 
-export function saveDiscovered(ids: Iterable<string>): void {
+function saveIds(key: string, ids: Iterable<string>): void {
 	try {
-		localStorage.setItem(DISCOVERED_KEY, JSON.stringify([...ids]));
+		localStorage.setItem(key, JSON.stringify([...ids]));
 	} catch {
-		// Storage blocked: places are rediscovered next visit.
+		// Storage blocked: places and tidbits are found again next visit.
 	}
 }
+
+export const loadDiscovered = (): string[] => loadIds(DISCOVERED_KEY);
+export const saveDiscovered = (ids: Iterable<string>): void => saveIds(DISCOVERED_KEY, ids);
+export const loadFound = (): string[] => loadIds(TIDBITS_KEY);
+export const saveFound = (ids: Iterable<string>): void => saveIds(TIDBITS_KEY, ids);
 
 export function prefersReducedMotion(settings: Settings): boolean {
 	if (settings.motion !== 'system') return settings.motion === 'reduced';
@@ -112,6 +118,9 @@ export class WorldUi {
 	editing = $state<Card | null>(null);
 	evolving = $state<Evolution | null>(null);
 	travel = $state<{ title: string; tip: string } | null>(null);
+	/** The tidbit being read (`fresh` the first time it is found), and every tidbit found in this browser. */
+	reading = $state<{ id: string; fresh: boolean } | null>(null);
+	found = $state<string[]>(loadFound());
 	pointerLocked = $state(false);
 	settings = $state<Settings>(loadSettings());
 	/** Polite live-region text (prompts, discoveries, board changes). */

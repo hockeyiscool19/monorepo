@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { pillar, type Capsule } from '../../domain/collide';
-import type { RealmLayout } from '../../domain/realm';
+import { inFrontOf, type RealmLayout } from '../../domain/realm';
 import { noise2, rng } from '../noise';
 import { NIGHT, WOOD } from '../palette';
 import type { Quality } from '../space';
@@ -96,7 +96,11 @@ export function buildFlora(
 		{ x: layout.wordWall.x, z: layout.wordWall.z, r: 7 },
 		{ x: layout.campfire.x, z: layout.campfire.z, r: 6 },
 		{ x: layout.pond.x, z: layout.pond.z, r: 10 },
-		{ x: layout.spawn.x, z: layout.spawn.z, r: 5 }
+		{ x: layout.spawn.x, z: layout.spawn.z, r: 5 },
+		{ x: layout.memoryLane.x, z: layout.memoryLane.z, r: 3 },
+		// The Jarl's landmarks keep their clearings; the NREL turbine stands at the back of its own.
+		...layout.landmarks.map((l) => ({ x: l.spot.x, z: l.spot.z, r: l.clear + 1.5 })),
+		...layout.landmarks.filter((l) => l.id === 'nrel').map((l) => ({ ...inFrontOf(l.spot, -15), r: 5 }))
 	];
 	const nearPath = (x: number, z: number) =>
 		paths.some(([ax, az, bx, bz]) => {

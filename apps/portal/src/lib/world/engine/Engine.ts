@@ -257,19 +257,29 @@ export class Engine {
 	}
 
 	private target(): Pick<Interactable, 'id' | 'kind'> | null {
+		const { x, z, yaw, pitch } = this.player;
 		const f = this.player.facing();
+		const eye = this.player.y + this.space.eyeHeight;
+		const look = { x: -Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) };
 		let best: Interactable | null = null;
-		let bestD = Infinity;
+		let bestScore = -Infinity;
 		for (const it of this.space.interactables) {
-			const dx = it.x - this.player.x;
-			const dz = it.z - this.player.z;
+			const dx = it.x - x;
+			const dz = it.z - z;
 			const d = Math.hypot(dx, dz);
-			if (d > it.radius || d >= bestD) continue;
+			if (d > it.radius) continue;
 			// Look roughly at it (within about 60°), unless you are practically touching it.
 			const facing = d < 0.8 ? 1 : (dx * f.x + dz * f.z) / d;
 			if (facing < 0.5) continue;
-			best = it;
-			bestD = d;
+			// Of everything in reach, the one nearest the crosshair wins (a shelf of keepsakes, a lectern before the
+			// Heartcell); a little nearer breaks a tie.
+			const dy = it.y - eye;
+			const aim = d < 0.8 ? 1 : (dx * look.x + dy * look.y + dz * look.z) / Math.hypot(dx, dy, dz);
+			const score = aim - d * 0.01;
+			if (score > bestScore) {
+				best = it;
+				bestScore = score;
+			}
 		}
 		return best ? { id: best.id, kind: best.kind } : null;
 	}
@@ -307,13 +317,15 @@ export class Engine {
 			this.opts.callbacks.onHud({
 				space: this.space.id,
 				heading: headingOf(this.player.yaw),
-				markers: this.space.markers.map((m) => ({
-					id: m.id,
-					icon: m.icon,
-					label: m.label,
-					bearing: bearing(this.player.x, this.player.z, m.x, m.z),
-					distance: Math.hypot(m.x - this.player.x, m.z - this.player.z)
-				})),
+				markers: this.space.markers
+					.filter((m) => m.reveal === undefined || this.discovered.has(m.id) || Math.hypot(m.x - this.player.x, m.z - this.player.z) < m.reveal)
+					.map((m) => ({
+						id: m.id,
+						icon: m.icon,
+						label: m.label,
+						bearing: bearing(this.player.x, this.player.z, m.x, m.z),
+						distance: Math.hypot(m.x - this.player.x, m.z - this.player.z)
+					})),
 				target,
 				stamina: this.player.stamina
 			});

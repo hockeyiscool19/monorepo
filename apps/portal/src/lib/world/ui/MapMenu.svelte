@@ -3,6 +3,7 @@
 	// and landmark with its state and buttons to fast travel or step straight through. This list is the full,
 	// accessible way to use Eisenhold without walking anywhere.
 	import { GETAWAY, gateState, sealMessage, spaceState } from '../domain/access';
+	import { HEARTCELL } from '../domain/landmarks';
 	import { gatePlaceName, PLACE_NAMES } from '../domain/lore';
 	import Dialog from './Dialog.svelte';
 	import type { WorldController } from './controller';
@@ -48,6 +49,10 @@
 				<text class="pin" x={x(layout.cabin.x)} y={y(layout.cabin.z)}>🏠</text>
 				<text class="pin" x={x(layout.wordWall.x)} y={y(layout.wordWall.z)}>📜</text>
 				<text class="pin" x={x(layout.campfire.x)} y={y(layout.campfire.z)}>🔥</text>
+				<text class="pin" x={x(layout.heartcell.x)} y={y(layout.heartcell.z)}>{HEARTCELL.icon}</text>
+				{#each layout.landmarks as l (l.id)}
+					<text class="pin" x={x(l.spot.x)} y={y(l.spot.z)}>{l.icon}</text>
+				{/each}
 				<text class="compass" x="100" y="12">N</text>
 			</svg>
 			<ul class="places" role="list">
@@ -98,6 +103,28 @@
 							<button type="button" class="btn btn-secondary" onclick={() => ctl.open('wordwall')}>Read</button>
 						</div>
 					</li>
+					<li>
+						<span class="icon" aria-hidden="true">{HEARTCELL.icon}</span>
+						<div class="body">
+							<h3>{HEARTCELL.name}</h3>
+							<p class="desc">{HEARTCELL.blurb} Before it, a lectern tells the legend of the panel.</p>
+						</div>
+						<div class="go">
+							<button type="button" class="btn btn-secondary" onclick={() => ctl.fastTravel(HEARTCELL.id)} aria-label="Travel to {HEARTCELL.name}">Travel</button>
+						</div>
+					</li>
+					{#each layout.landmarks as l (l.id)}
+						<li>
+							<span class="icon" aria-hidden="true">{l.icon}</span>
+							<div class="body">
+								<h3>{l.name}</h3>
+								<p class="desc">{l.blurb}</p>
+							</div>
+							<div class="go">
+								<button type="button" class="btn btn-secondary" onclick={() => ctl.fastTravel(`landmark:${l.id}`)} aria-label="Travel to {l.name}">Travel</button>
+							</div>
+						</li>
+					{/each}
 				{/if}
 			</ul>
 		</div>

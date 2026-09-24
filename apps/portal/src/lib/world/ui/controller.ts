@@ -3,7 +3,7 @@
 // world (E on a gate, a portal crossed, a card completed) into use cases and interface state.
 
 import { GETAWAY, gateState, guildNames, sealMessage, spaceState, type AccessContext, type RealmMode } from '../domain/access';
-import { gatePlaceName, GUARD_LINES, lineAt, LOADING_TIPS, PLACE_NAMES } from '../domain/lore';
+import { gatePlaceName, GUARD_LINES, lineAt, LOADING_TIPS, PLACE_NAMES, placeTitle } from '../domain/lore';
 import { realmMode } from '../domain/mode';
 import { layoutRealm, type RealmData, type RealmGate, type RealmLayout } from '../domain/realm';
 import type { AuthPort } from '../application/ports';
@@ -14,6 +14,7 @@ import { HttpDoor } from '../adapters/httpDoor';
 import type { Engine, HudFrame } from '../engine/Engine';
 import type { GateLook, Interactable } from '../engine/space';
 import { BoardController } from './boardController';
+import { TidbitLog } from './tidbitLog';
 import { loadDiscovered, prefersReducedMotion, saveDiscovered, saveSettings, type Overlay, type Settings, type WorldUi } from './state.svelte';
 
 export class WorldController {
@@ -24,6 +25,7 @@ export class WorldController {
 	private readonly door = new HttpDoor((input, init) => fetch(input, init));
 	private engine: Engine | null = null;
 	readonly board: BoardController;
+	readonly tidbits: TidbitLog;
 	private guardLine = 0;
 	private readonly discovered = new Set(loadDiscovered());
 	private previousOverlay: Overlay = null;
@@ -43,6 +45,7 @@ export class WorldController {
 			open: (overlay) => this.open(overlay),
 			close: () => this.close()
 		});
+		this.tidbits = new TidbitLog(ui, { open: (overlay) => this.open(overlay), chime: () => this.engine?.audio.chime() });
 	}
 
 	// ---- start-up -----------------------------------------------------------------------------------------
@@ -163,8 +166,8 @@ export class WorldController {
 				return this.say('Hold guard', lineAt(GUARD_LINES, this.guardLine++));
 			case 'campfire':
 				return this.say('', 'You warm your hands by the fire. Your stamina returns.');
-			case 'postcard':
-				return this.say('', 'Greetings from Colorado: twin maroon peaks over a mirror lake, aspens gone to gold.');
+			case 'tidbit':
+				return this.tidbits.read(target.id);
 		}
 	}
 
@@ -179,8 +182,7 @@ export class WorldController {
 
 	private discover(id: string): void {
 		saveDiscovered(this.discovered.add(id));
-		const gate = this.realm.gates.find((g) => `gate:${g.id}` === id);
-		const title = gate ? gatePlaceName(gate.name) : id === 'cabin-door' ? PLACE_NAMES.cabin : id === 'word-wall' ? PLACE_NAMES.wordWall : PLACE_NAMES.campfire;
+		const title = placeTitle(id, this.realm.gates);
 		this.ui.discovery = { title, subtitle: 'Discovered' };
 		this.ui.announcement = `${title} discovered.`;
 		setTimeout(() => (this.ui.discovery = null), 4200);
@@ -204,6 +206,7 @@ export class WorldController {
 			if (look === 'sealed') return { verb: 'Sealed', name, tone: 'sealed' };
 			return { verb: look === 'unstable' ? 'Enter (unstable)' : 'Enter', name, tone: 'go' };
 		}
+		if (target.kind === 'tidbit') return { ...this.tidbits.describe(target.id), tone: 'plain' };
 		if (target.kind === 'cabin-door') {
 			const open = spaceState(GETAWAY, this.access).kind === 'open';
 			return { verb: open ? 'Enter' : 'Locked', name: GETAWAY.name, tone: open ? 'go' : 'sealed' };
@@ -215,8 +218,7 @@ export class WorldController {
 			'word-wall': ['Read', PLACE_NAMES.wordWall],
 			guard: ['Talk', 'Hold guard'],
 			signpost: ['Read', 'Signpost'],
-			campfire: ['Rest', PLACE_NAMES.campfire],
-			postcard: ['Look at', 'Postcard']
+			campfire: ['Rest', PLACE_NAMES.campfire]
 		};
 		const [verb, name] = plain[target.kind] ?? ['Use', target.id];
 		return { verb, name, tone: 'plain' };
